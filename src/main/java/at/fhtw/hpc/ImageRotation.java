@@ -27,10 +27,10 @@ public class ImageRotation {
 			"                           float cosTheta ) {\n" +
 			"    const int ix = get_global_id(0);\n" +
 			"    const int iy = get_global_id(1);\n" +
-			"    float x0 = W/2;\n" +
-			"    float y0 = H/2;\n" +
-			"    float xpos = ((float)ix - x0) * cosTheta - ((float)iy - y0) * sinTheta + x0; \n" +
-			"    float ypos = ((float)ix - x0) * sinTheta + ((float)iy - y0) * cosTheta + y0; \n" +
+			"    int x0 = (int)W/2;\n" +
+			"    int y0 = (int)H/2;\n" +
+			"    int xpos = (int)((ix - x0) * cosTheta - (iy - y0) * sinTheta + x0); \n" +
+			"    int ypos = (int)((ix - x0) * sinTheta + (iy - y0) * cosTheta + y0); \n" +
 			"    int2 posIn = {xpos, ypos};\n" +
 			"    int2 posOut = {ix, iy};\n" +
 			"    if (( ((int)xpos >= 0) && ((int)xpos < W)) && (((int)ypos >= 0) && ((int)ypos < H))) { \n" +
@@ -48,7 +48,7 @@ public class ImageRotation {
 			BufferedImage temp = ImageIO.read(new File("src/main/resources/flower.png"));
 			width = temp.getWidth();
 			height = temp.getHeight();
-			inputImage = new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);
+			inputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 			Graphics g = inputImage.createGraphics();
 			g.drawImage(temp, 0, 0, null);
 			g.dispose();
@@ -113,7 +113,7 @@ public class ImageRotation {
 
 		// Create the memory object for the input- and output image
 		DataBufferInt dataBufferSrc =
-				(DataBufferInt)inputImage.getRaster().getDataBuffer();
+				(DataBufferInt) inputImage.getRaster().getDataBuffer();
 		int dataSrc[] = dataBufferSrc.getData();
 
 		cl_image_format imageFormat = new cl_image_format();
@@ -148,7 +148,7 @@ public class ImageRotation {
 
 		// Read the pixel data into the output image
 		DataBufferInt dataBufferDst =
-				(DataBufferInt)outputImage.getRaster().getDataBuffer();
+				(DataBufferInt) outputImage.getRaster().getDataBuffer();
 		int dataDst[] = dataBufferDst.getData();
 		clEnqueueReadImage(
 				commandQueue, outputImageMem, true, new long[3],
@@ -167,7 +167,5 @@ public class ImageRotation {
 		clReleaseProgram(program);
 		clReleaseCommandQueue(commandQueue);
 		clReleaseContext(context);
-
-
 	}
 }
