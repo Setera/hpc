@@ -39,7 +39,7 @@ public class ImageRotation {
 			"    float ypos = ((float)ix - x0) * sinTheta + ((float)iy - y0) * cosTheta + y0;" +
 			"    int2 posIn = {xpos, ypos};"+
 			"    int2 posOut = {ix, iy};"+
-			"    if (( ((int)xpos >= 0) && ((int)xpos < W))) " +
+			"    if (( ((int)xpos >= 0) && ((int)xpos < W)) " +
 			"    && (((int)ypos >= 0) && ((int)ypos < H))) {" +
 			"        uint4 pixel = read_imageui(sourceImage, samplerIn, posIn);"+
 			"    write_imageui(targetImage, posOut, pixel);"+
