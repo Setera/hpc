@@ -3,6 +3,7 @@ package at.fhtw.hpc;
 import org.jocl.*;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
@@ -17,33 +18,25 @@ public class ImageRotation {
 
 	private static final double angle = 90;
 
-	private static String programSource = "const sampler_t samplerIn = " +
-			"    CLK_NORMALIZED_COORDS_FALSE | " +
-			"    CLK_ADDRESS_CLAMP |" +
-			"    CLK_FILTER_NEAREST;" +
-			"const sampler_t samplerOut = " +
-			"    CLK_NORMALIZED_COORDS_FALSE |" +
-			"    CLK_ADDRESS_CLAMP |" +
-			"    CLK_FILTER_NEAREST;" +
-			"__kernel void image_rotate(" +
-			"                           __read_only  image2d_t sourceImage, "+
-			"                           __write_only image2d_t targetImage," +
-			"                           int W, int H," +
-			"                           float sinTheta," +
-			"                           float cosTheta ) {" +
-			"    const int ix = get_global_id(0);" +
-			"    const int iy = get_global_id(1);" +
-			"    float x0 = W/2;" +
-			"    float y0 = H/2;" +
-			"    float xpos = ((float)ix - x0) * cosTheta - ((float)iy - y0) * sinTheta + x0;" +
-			"    float ypos = ((float)ix - x0) * sinTheta + ((float)iy - y0) * cosTheta + y0;" +
-			"    int2 posIn = {xpos, ypos};"+
-			"    int2 posOut = {ix, iy};"+
-			"    if (( ((int)xpos >= 0) && ((int)xpos < W)) " +
-			"    && (((int)ypos >= 0) && ((int)ypos < H))) {" +
-			"        uint4 pixel = read_imageui(sourceImage, samplerIn, posIn);"+
-			"    write_imageui(targetImage, posOut, pixel);"+
-			"    }" +
+	private static String programSource = "const sampler_t samplerIn = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
+			"const sampler_t samplerOut = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
+			"__kernel void image_rotate(__read_only  image2d_t sourceImage, \n" +
+			"                           __write_only image2d_t targetImage, \n" +
+			"                           int W, int H,\n" +
+			"                           float sinTheta,\n" +
+			"                           float cosTheta ) {\n" +
+			"    const int ix = get_global_id(0);\n" +
+			"    const int iy = get_global_id(1);\n" +
+			"    float x0 = W/2;\n" +
+			"    float y0 = H/2;\n" +
+			"    float xpos = ((float)ix - x0) * cosTheta - ((float)iy - y0) * sinTheta + x0; \n" +
+			"    float ypos = ((float)ix - x0) * sinTheta + ((float)iy - y0) * cosTheta + y0; \n" +
+			"    int2 posIn = {xpos, ypos};\n" +
+			"    int2 posOut = {ix, iy};\n" +
+			"    if (( ((int)xpos >= 0) && ((int)xpos < W)) && (((int)ypos >= 0) && ((int)ypos < H))) { \n" +
+			"        uint4 pixel = read_imageui(sourceImage, samplerIn, posIn);\n" +
+			"        write_imageui(targetImage, posOut, pixel);\n" +
+			"    } \n" +
 			"}";
 
 	public static void main(String[] args) {
@@ -52,9 +45,13 @@ public class ImageRotation {
 		int width;
 		int height;
 		try {
-			inputImage = ImageIO.read(new File("src/main/resources/flower.png"));
-			width = inputImage.getWidth();
-			height = inputImage.getHeight();
+			BufferedImage temp = ImageIO.read(new File("src/main/resources/flower.png"));
+			width = temp.getWidth();
+			height = temp.getHeight();
+			inputImage = new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);
+			Graphics g = inputImage.createGraphics();
+			g.drawImage(temp, 0, 0, null);
+			g.dispose();
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
@@ -112,7 +109,7 @@ public class ImageRotation {
 		clBuildProgram(program, 0, null, null, null, null);
 
 		// Create the kernel
-		cl_kernel kernel = clCreateKernel(program, "sampleKernel", null);
+		cl_kernel kernel = clCreateKernel(program, "image_rotate", null);
 
 		// Create the memory object for the input- and output image
 		DataBufferInt dataBufferSrc =
