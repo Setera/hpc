@@ -16,7 +16,7 @@ import static org.jocl.CL.*;
  */
 public class ImageRotation {
 
-	private static final double angle = 90;
+	private static final double angle = 30;
 
 	private static String programSource = "const sampler_t samplerIn = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
 			"const sampler_t samplerOut = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
@@ -41,11 +41,10 @@ public class ImageRotation {
 
 	public static void main(String[] args) {
 		BufferedImage inputImage;
-		int n = 10;
 		int width;
 		int height;
 		try {
-			BufferedImage temp = ImageIO.read(new File("src/main/resources/flower.png"));
+			BufferedImage temp = ImageIO.read(new File("src/main/resources/nandu.jpg"));
 			width = temp.getWidth();
 			height = temp.getHeight();
 			inputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -135,16 +134,16 @@ public class ImageRotation {
 		clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(outputImageMem));
 		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{width}));
 		clSetKernelArg(kernel, 3, Sizeof.cl_int, Pointer.to(new int[]{height}));
-		clSetKernelArg(kernel, 4, Sizeof.cl_float, Pointer.to(new float[]{(float) Math.sin(angle)}));
-		clSetKernelArg(kernel, 5, Sizeof.cl_float, Pointer.to(new float[]{(float) Math.cos(angle)}));
+		clSetKernelArg(kernel, 4, Sizeof.cl_float, Pointer.to(new float[]{(float) Math.sin(Math.toRadians(angle))}));
+		clSetKernelArg(kernel, 5, Sizeof.cl_float, Pointer.to(new float[]{(float) Math.cos(Math.toRadians(angle))}));
 
 		// Set the work-item dimensions
-		long global_work_size[] = new long[]{n};
+		long global_work_size[] = new long[]{width, height};
 		long local_work_size[] = new long[]{1};
 
 		// Execute the kernel
-		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-				global_work_size, local_work_size, 0, null, null);
+		clEnqueueNDRangeKernel(commandQueue, kernel, 2, null,
+				global_work_size, null, 0, null, null);
 
 		// Read the pixel data into the output image
 		DataBufferInt dataBufferDst =
