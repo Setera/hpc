@@ -1,59 +1,31 @@
 package at.fhtw.hpc;
 
+import org.apache.commons.io.FileUtils;
 import org.jocl.*;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
 import static org.jocl.CL.*;
 
 /**
- * Naive Parallel Scan
+ * Work Efficient Parallel Scan
  * 31.5.16
  */
 public class WorkEfficientParallelScan {
-
-	private static String programSource =
-			"__kernel void scan(__global float *g_odata,\n" +
-					"           __global float *g_idata,\n" +
-					"           __local float *temp,\n" +
-					"           int n) {\n" +
-					"    int thid = get_global_id(0);\n" +
-					"    int offset = 1;\n" +
-					"    temp[2*thid] = g_idata[2*thid];\n" +
-					"    temp[2*thid+1] = g_idata[2*thid+1];\n" +
-					"    for (int d = n>>1; d > 0; d >>= 1) {   \n" +
-					"       barrier(CLK_LOCAL_MEM_FENCE); \n" +
-					"       if (thid < d) {  \n" +
-					"           int ai = offset*(2*thid+1)-1;  \n" +
-					"           int bi = offset*(2*thid+2)-1; \n" +
-					"           temp[bi] += temp[ai];  \n" +
-					"       }  \n" +
-					"       offset *= 2;  \n" +
-					"    }" +
-					"    if (thid == 0) {\n" +
-					"       temp[n - 1] = 0;\n" +
-					"    }\n" +
-					"    for (int d = 1; d < n; d *= 2) {  \n" +
-					"       offset >>= 1;  \n" +
-					"       barrier(CLK_LOCAL_MEM_FENCE);   \n" +
-					"       if (thid < d) {\n" +
-					"           int ai = offset*(2*thid+1)-1;  \n" +
-					"           int bi = offset*(2*thid+2)-1;  \n" +
-					"           float t = temp[ai];  \n" +
-					"           temp[ai] = temp[bi];  \n" +
-					"           temp[bi] += t;   \n" +
-					"       }  \n" +
-					"    }  \n" +
-					"    barrier(CLK_LOCAL_MEM_FENCE);   \n" +
-					"    g_odata[2*thid] = temp[2*thid]; // write results to device memory  \n" +
-					"    g_odata[2*thid+1] = temp[2*thid+1];  \n" +
-					"};";
-
 	public static void main(String args[]) {
-		float inputArray[] = {3, 1, 7, 0, 4, 1, 6, 3};
+		File programSourceFile = new File("programSource.txt");
+		String programSource = "";
+		try {
+			programSource = FileUtils.readFileToString(programSourceFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};
 		int n = inputArray.length;
 		long global_work_size[] = new long[]{n};
-		long local_work_size[] = new long[]{n};
+		long local_work_size[] = new long[]{4};
 		float outputArray[] = new float[n];
 
 		// Set the work-item dimensions
