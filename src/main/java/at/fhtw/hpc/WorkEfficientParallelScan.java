@@ -15,7 +15,7 @@ import static org.jocl.CL.*;
  */
 public class WorkEfficientParallelScan {
 	public static void main(String args[]) {
-		File programSourceFile = new File("programSource.txt");
+		File programSourceFile = new File("programSource.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -25,7 +25,7 @@ public class WorkEfficientParallelScan {
 		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};
 		int n = inputArray.length;
 		long global_work_size[] = new long[]{n};
-		long local_work_size[] = new long[]{4};
+		long local_work_size[] = new long[]{n};
 		float outputArray[] = new float[n];
 
 		// Set the work-item dimensions
