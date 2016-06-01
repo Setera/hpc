@@ -14,41 +14,57 @@ import static org.jocl.CL.*;
  * 31.5.16
  */
 public class WorkEfficientParallelScan {
+
+	private static cl_context context;
+	private static cl_command_queue commandQueue;
+	private static long[] local_work_size;
+
 	public static void main(String args[]) {
-		File programSourceFile = new File("programSource.c");
-		String programSource = "";
-		try {
-			programSource = FileUtils.readFileToString(programSourceFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};
-		int n = inputArray.length;
-		long global_work_size[] = new long[]{n};
-		long local_work_size[] = new long[]{n};
-		float outputArray[] = new float[n];
+		initPlatform();
+		local_work_size = new long[]{2};
+		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
-		// Set the work-item dimensions
+		Scanner scanner = new Scanner(inputArray).invoke();
+		float[] outputArray = scanner.getOutputArray();
+		float[] blocksumArray = scanner.getBlocksumArray();
 
-		Pointer inputPointer = Pointer.to(inputArray);
-		Pointer outputPointer = Pointer.to(outputArray);
+		Scanner scanner2 = new Scanner(blocksumArray).invoke();
+		float[] outputArray2 = scanner2.getOutputArray();
+		float[] blocksumArray2 = scanner2.getBlocksumArray();
 
+		float[] scannedArray = addBlocksum(Arrays.copyOf(outputArray, outputArray.length), outputArray2);
+
+		releasePlatform();
+
+		System.out.println(Arrays.toString(outputArray));
+		System.out.println(Arrays.toString(blocksumArray));
+
+		System.out.println(Arrays.toString(outputArray2));
+		System.out.println(Arrays.toString(scannedArray));
+	}
+
+	private static void releasePlatform() {
+		clReleaseCommandQueue(commandQueue);
+		clReleaseContext(context);
+	}
+
+	private static void initPlatform() {
 		// The platform, device type and device number
 		// that will be used
-		final int platformIndex = 0;
-		final long deviceType = CL_DEVICE_TYPE_ALL;
-		final int deviceIndex = 0;
+		int platformIndex = 0;
+		long deviceType = CL_DEVICE_TYPE_ALL;
+		int deviceIndex = 0;
 
 		// Enable exceptions and subsequently omit error checks in this sample
 		CL.setExceptionsEnabled(true);
 
 		// Obtain the number of platforms
-		int numPlatformsArray[] = new int[1];
+		int[] numPlatformsArray = new int[1];
 		clGetPlatformIDs(0, null, numPlatformsArray);
 		int numPlatforms = numPlatformsArray[0];
 
 		// Obtain a platform ID
-		cl_platform_id platforms[] = new cl_platform_id[numPlatforms];
+		cl_platform_id[] platforms = new cl_platform_id[numPlatforms];
 		clGetPlatformIDs(platforms.length, platforms, null);
 		cl_platform_id platform = platforms[platformIndex];
 
@@ -57,32 +73,47 @@ public class WorkEfficientParallelScan {
 		contextProperties.addProperty(CL_CONTEXT_PLATFORM, platform);
 
 		// Obtain the number of devices for the platform
-		int numDevicesArray[] = new int[1];
+		int[] numDevicesArray = new int[1];
 		clGetDeviceIDs(platform, deviceType, 0, null, numDevicesArray);
 		int numDevices = numDevicesArray[0];
 
 		// Obtain a device ID
-		cl_device_id devices[] = new cl_device_id[numDevices];
+		cl_device_id[] devices = new cl_device_id[numDevices];
 		clGetDeviceIDs(platform, deviceType, numDevices, devices, null);
 		cl_device_id device = devices[deviceIndex];
 
 		// Create a context for the selected device
-		cl_context context = clCreateContext(
+		context = clCreateContext(
 				contextProperties, 1, new cl_device_id[]{device},
 				null, null, null);
 
 		// Create a command-queue for the selected device
-		cl_command_queue commandQueue =
-				clCreateCommandQueue(context, device, 0, null);
+		commandQueue = clCreateCommandQueue(context, device, 0, null);
+	}
+
+	private static float[] addBlocksum(float[] scanArray, float[] blocksumArray) {
+		File programSourceFile = new File("programSource2.c");
+		String programSource = "";
+		try {
+			programSource = FileUtils.readFileToString(programSourceFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		int n = scanArray.length;
+		long global_work_size[] = new long[]{n};
+		// Set the work-item dimensions
+		Pointer outputPointer = Pointer.to(scanArray);
+		Pointer blocksumPointer = Pointer.to(blocksumArray);
+
 
 		// Allocate the memory objects for the input- and output data
-		cl_mem memObjects[] = new cl_mem[3];
+		cl_mem memObjects[] = new cl_mem[2];
 		memObjects[0] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_float * n, outputPointer, null);
 		memObjects[1] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_float * n, inputPointer, null);
+				Sizeof.cl_float * n, blocksumPointer, null);
 
 		// Create the program from the source code
 		cl_program program = clCreateProgramWithSource(context,
@@ -92,16 +123,14 @@ public class WorkEfficientParallelScan {
 		clBuildProgram(program, 0, null, null, null, null);
 
 		// Create the kernel
-		cl_kernel kernel = clCreateKernel(program, "scan", null);
+		cl_kernel kernel = clCreateKernel(program, "addBlocksum", null);
 
 		// Set the arguments for the kernel
 		clSetKernelArg(kernel, 0,
 				Sizeof.cl_mem, Pointer.to(memObjects[0]));
 		clSetKernelArg(kernel, 1,
 				Sizeof.cl_mem, Pointer.to(memObjects[1]));
-		clSetKernelArg(kernel, 2,
-				2 * local_work_size[0] * Sizeof.cl_float, null);
-		clSetKernelArg(kernel, 3, Sizeof.cl_int, Pointer.to(new int[]{n}));
+		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int)local_work_size[0]*2}));
 
 		// Execute the kernel
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
@@ -110,15 +139,100 @@ public class WorkEfficientParallelScan {
 		// Read the output data
 		clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
 				n * Sizeof.cl_float, outputPointer, 0, null, null);
-
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseMemObject(memObjects[1]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
-		clReleaseCommandQueue(commandQueue);
-		clReleaseContext(context);
+		return  scanArray;
+	}
 
-		System.out.println(Arrays.toString(outputArray));
+	private static class Scanner {
+		private float[] inputArray;
+		private float[] outputArray;
+		private float[] blocksumArray;
+
+		public Scanner(float... inputArray) {
+			this.inputArray = inputArray;
+		}
+
+		public float[] getOutputArray() {
+			return outputArray;
+		}
+
+		public float[] getBlocksumArray() {
+			return blocksumArray;
+		}
+
+		public Scanner invoke() {
+			File programSourceFile = new File("programSource.c");
+			String programSource = "";
+			try {
+				programSource = FileUtils.readFileToString(programSourceFile);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			int n = inputArray.length;
+			long global_work_size[] = new long[]{n};
+			outputArray = new float[n];
+			blocksumArray = new float[n / ((int) local_work_size[0] * 2)];
+
+			// Set the work-item dimensions
+
+			Pointer inputPointer = Pointer.to(inputArray);
+			Pointer outputPointer = Pointer.to(outputArray);
+			Pointer blocksumPointer = Pointer.to(blocksumArray);
+
+
+			// Allocate the memory objects for the input- and output data
+			cl_mem memObjects[] = new cl_mem[3];
+			memObjects[0] = clCreateBuffer(context,
+					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+					Sizeof.cl_float * n, outputPointer, null);
+			memObjects[1] = clCreateBuffer(context,
+					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+					Sizeof.cl_float * n, inputPointer, null);
+			memObjects[2] = clCreateBuffer(context,
+					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+					Sizeof.cl_float * n, blocksumPointer, null);
+
+			// Create the program from the source code
+			cl_program program = clCreateProgramWithSource(context,
+					1, new String[]{programSource}, null, null);
+
+			// Build the program
+			clBuildProgram(program, 0, null, null, null, null);
+
+			// Create the kernel
+			cl_kernel kernel = clCreateKernel(program, "scan", null);
+
+			// Set the arguments for the kernel
+			clSetKernelArg(kernel, 0,
+					Sizeof.cl_mem, Pointer.to(memObjects[0]));
+			clSetKernelArg(kernel, 1,
+					Sizeof.cl_mem, Pointer.to(memObjects[1]));
+			clSetKernelArg(kernel, 2,
+					local_work_size[0] * Sizeof.cl_float, null);
+			clSetKernelArg(kernel, 3,
+					Sizeof.cl_mem, Pointer.to(memObjects[2]));
+			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
+
+			// Execute the kernel
+			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
+					global_work_size, local_work_size, 0, null, null);
+
+			// Read the output data
+			clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
+					n * Sizeof.cl_float, outputPointer, 0, null, null);
+			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
+					n * Sizeof.cl_float, blocksumPointer, 0, null, null);
+
+			// Release kernel, program, and memory objects
+			clReleaseMemObject(memObjects[0]);
+			clReleaseMemObject(memObjects[1]);
+			clReleaseKernel(kernel);
+			clReleaseProgram(program);
+			return this;
+		}
 	}
 }

@@ -1,6 +1,7 @@
 __kernel void scan(__global float *g_odata,
                    __global float *g_idata,
                    __local float *temp,
+                   __global float *blocksum,
                    int n) {
     int global_id = get_global_id(0);
 	int local_id = get_local_id(0);
@@ -17,6 +18,8 @@ __kernel void scan(__global float *g_odata,
         offset *= 2;
     }
     if (local_id == 0) {
+        int index = global_id / get_local_size(0);
+        blocksum[index] = temp[n - 1];
         temp[n - 1] = 0;
     }
     for (int d = 1; d < n; d *= 2) {
