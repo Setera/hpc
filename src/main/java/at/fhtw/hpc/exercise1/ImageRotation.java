@@ -1,4 +1,4 @@
-package at.fhtw.hpc;
+package at.fhtw.hpc.exercise1;
 
 import org.jocl.*;
 
@@ -44,7 +44,7 @@ public class ImageRotation {
 		int width;
 		int height;
 		try {
-			BufferedImage temp = ImageIO.read(new File("src/main/resources/nandu.jpg"));
+			BufferedImage temp = ImageIO.read(new File("src/main/resources/at/fhtw/hpc/exercise1/nandu.jpg"));
 			width = temp.getWidth();
 			height = temp.getHeight();
 			inputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);

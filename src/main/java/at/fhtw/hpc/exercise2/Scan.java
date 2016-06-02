@@ -1,8 +1,6 @@
-package at.fhtw.hpc;
+package at.fhtw.hpc.exercise2;
 
 import at.fhtw.hpc.util.TimeLogger;
-
-import java.util.Arrays;
 
 /**
  * Exercise 2

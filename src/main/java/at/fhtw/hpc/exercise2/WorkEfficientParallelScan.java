@@ -1,4 +1,4 @@
-package at.fhtw.hpc;
+package at.fhtw.hpc.exercise2;
 
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
@@ -48,7 +48,7 @@ public class WorkEfficientParallelScan {
 		clReleaseContext(context);
 	}
 
-	private static void initPlatform() {
+	public static void initPlatform() {
 		// The platform, device type and device number
 		// that will be used
 		int platformIndex = 0;
@@ -91,8 +91,8 @@ public class WorkEfficientParallelScan {
 		commandQueue = clCreateCommandQueue(context, device, 0, null);
 	}
 
-	private static float[] addBlocksum(float[] scanArray, float[] blocksumArray) {
-		File programSourceFile = new File("programSource2.c");
+	public static float[] addBlocksum(float[] scanArray, float[] blocksumArray) {
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource2.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -152,20 +152,20 @@ public class WorkEfficientParallelScan {
 		private float[] outputArray;
 		private float[] blocksumArray;
 
-		public Scanner(float... inputArray) {
+		Scanner(float... inputArray) {
 			this.inputArray = inputArray;
 		}
 
-		public float[] getOutputArray() {
+		float[] getOutputArray() {
 			return outputArray;
 		}
 
-		public float[] getBlocksumArray() {
+		float[] getBlocksumArray() {
 			return blocksumArray;
 		}
 
-		public Scanner invoke() {
-			File programSourceFile = new File("programSource.c");
+		Scanner invoke() {
+			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource.c");
 			String programSource = "";
 			try {
 				programSource = FileUtils.readFileToString(programSourceFile);

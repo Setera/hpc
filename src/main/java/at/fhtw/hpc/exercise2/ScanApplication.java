@@ -1,4 +1,4 @@
-package at.fhtw.hpc;
+package at.fhtw.hpc.exercise2;
 
 /**
  * Exercise 3

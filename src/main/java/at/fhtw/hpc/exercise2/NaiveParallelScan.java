@@ -1,4 +1,4 @@
-package at.fhtw.hpc;
+package at.fhtw.hpc.exercise2;
 
 import org.jocl.*;
 
