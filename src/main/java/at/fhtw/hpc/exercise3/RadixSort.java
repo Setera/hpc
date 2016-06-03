@@ -23,8 +23,11 @@ public class RadixSort {
 	private static long[] local_work_size;
 
 	public static void main(String args[]) {
-		Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100};
+		//Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100};
+		Integer[] inputArray = {4,7,2,6,3,5,1,0};
 		int bArray[] = new int[inputArray.length];
+		int eArray[] = new int[inputArray.length];
+		int sArray[] = new int[inputArray.length];
 		local_work_size = new long[]{2};
 
 		initPlatform();
@@ -33,15 +36,32 @@ public class RadixSort {
 		int bitLength = max.bitLength();
 		for (int i = 0; i < bitLength; i++) {
 			for (int j = 0; j < inputArray.length; j++) {
-				bArray[j] = getBit(inputArray[j], i);
+				int b = getBit(inputArray[j], i);
+				bArray[j] = b;
+				eArray[j] = b == 1 ? 0 : 1;
 			}
-			Scanner scanner = new Scanner(bArray).invoke();
+			Scanner scanner = new Scanner(eArray).invoke();
 			int[] outputArray = scanner.getOutputArray();
 			int[] blocksumArray = scanner.getBlocksumArray();
+
+			int[] fArray = outputArray;
+			if(blocksumArray.length > 1) {
+				fArray = createCompleteScanFromBlocks(outputArray, blocksumArray);
+			}
+
+			int totalFalse = eArray[eArray.length - 1] + fArray[fArray.length - 1];
+
+			for (int j = 0; j < fArray.length; j++) {
+				int t = j - fArray[j] + totalFalse;
+				int d = bArray[j] == 1 ? t : fArray[j];
+				sArray[d] = inputArray[j];
+			}
+
 			System.out.println(Arrays.toString(outputArray));
 			System.out.println(Arrays.toString(blocksumArray));
 
-
+			System.out.println(Arrays.toString(fArray));
+			System.out.println(Arrays.toString(sArray));
 		}
 		System.out.println(bitLength);
 		releasePlatform();
@@ -99,8 +119,21 @@ public class RadixSort {
 		commandQueue = clCreateCommandQueue(context, device, 0, null);
 	}
 
-	public static float[] addBlocksum(float[] scanArray, float[] blocksumArray) {
-		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/programSource2.c");
+	public static int[] createCompleteScanFromBlocks(int[] scanArray, int[] blocksumArray) {
+		Scanner scanner = new Scanner(blocksumArray).invoke();
+		int[] outputArray = scanner.getOutputArray();
+		int[] blocksumArray2 = scanner.getBlocksumArray();
+
+		if(blocksumArray2.length > 1) {
+			outputArray = createCompleteScanFromBlocks(outputArray, blocksumArray2);
+		}
+
+		int[] scannedArray = addBlocksum(Arrays.copyOf(scanArray, scanArray.length), outputArray);
+		return scannedArray;
+	}
+
+	public static int[] addBlocksum(int[] scanArray, int[] blocksumArray) {
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource2.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -152,7 +185,7 @@ public class RadixSort {
 		clReleaseMemObject(memObjects[1]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
-		return  scanArray;
+		return scanArray;
 	}
 
 	private static class Scanner {
