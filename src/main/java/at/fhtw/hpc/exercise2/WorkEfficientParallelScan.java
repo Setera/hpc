@@ -19,27 +19,32 @@ public class WorkEfficientParallelScan {
 	private static cl_command_queue commandQueue;
 	private static long[] local_work_size;
 
+	//TODO: Bank conflicts
+	//TODO: Timing info
+
 	public static void main(String args[]) {
 		initPlatform();
 		local_work_size = new long[]{2};
-		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+		//float inputArray[] = {1, 1, 1, 1};  // 4
+		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};  // 8
+		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 16
+		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 32
+		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};   // 64
 
 		Scanner scanner = new Scanner(inputArray).invoke();
 		float[] outputArray = scanner.getOutputArray();
 		float[] blocksumArray = scanner.getBlocksumArray();
 
-		Scanner scanner2 = new Scanner(blocksumArray).invoke();
-		float[] outputArray2 = scanner2.getOutputArray();
-		float[] blocksumArray2 = scanner2.getBlocksumArray();
-
-		float[] scannedArray = addBlocksum(Arrays.copyOf(outputArray, outputArray.length), outputArray2);
+		float[] scannedArray = outputArray;
+		if(blocksumArray.length > 1) {
+			scannedArray = createCompleteScanFromBlocks(outputArray, blocksumArray);
+		}
 
 		releasePlatform();
 
 		System.out.println(Arrays.toString(outputArray));
 		System.out.println(Arrays.toString(blocksumArray));
 
-		System.out.println(Arrays.toString(outputArray2));
 		System.out.println(Arrays.toString(scannedArray));
 	}
 
@@ -89,6 +94,19 @@ public class WorkEfficientParallelScan {
 
 		// Create a command-queue for the selected device
 		commandQueue = clCreateCommandQueue(context, device, 0, null);
+	}
+
+	public static float[] createCompleteScanFromBlocks(float[] scanArray, float[] blocksumArray) {
+		Scanner scanner = new Scanner(blocksumArray).invoke();
+		float[] outputArray = scanner.getOutputArray();
+		float[] blocksumArray2 = scanner.getBlocksumArray();
+
+		if(blocksumArray2.length > 1) {
+			outputArray = createCompleteScanFromBlocks(outputArray, blocksumArray2);
+		}
+
+		float[] scannedArray = addBlocksum(Arrays.copyOf(scanArray, scanArray.length), outputArray);
+		return scannedArray;
 	}
 
 	public static float[] addBlocksum(float[] scanArray, float[] blocksumArray) {
