@@ -23,11 +23,12 @@ public class RadixSort {
 	private static long[] local_work_size;
 
 	public static void main(String args[]) {
-		//Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100};
-		Integer[] inputArray = {4,7,2,6,3,5,1,0};
+		Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100, 33, 22, 6, 99, 50, 7, 10, 77};
+		//Integer[] inputArray = {4,7,2,6,3,5,1,0};
+		Integer[] resultArray = Arrays.copyOf(inputArray, inputArray.length);
 		int bArray[] = new int[inputArray.length];
 		int eArray[] = new int[inputArray.length];
-		int sArray[] = new int[inputArray.length];
+		Integer sArray[] = new Integer[inputArray.length];
 		local_work_size = new long[]{2};
 
 		initPlatform();
@@ -35,8 +36,8 @@ public class RadixSort {
 		BigInteger max = new BigInteger(Collections.max(Arrays.asList(inputArray)).toString());
 		int bitLength = max.bitLength();
 		for (int i = 0; i < bitLength; i++) {
-			for (int j = 0; j < inputArray.length; j++) {
-				int b = getBit(inputArray[j], i);
+			for (int j = 0; j < resultArray.length; j++) {
+				int b = getBit(resultArray[j], i);
 				bArray[j] = b;
 				eArray[j] = b == 1 ? 0 : 1;
 			}
@@ -54,8 +55,13 @@ public class RadixSort {
 			for (int j = 0; j < fArray.length; j++) {
 				int t = j - fArray[j] + totalFalse;
 				int d = bArray[j] == 1 ? t : fArray[j];
-				sArray[d] = inputArray[j];
+				sArray[d] = resultArray[j];
 			}
+
+			resultArray = Arrays.copyOf(sArray, sArray.length);
+
+			System.out.println(Arrays.toString(bArray));
+			System.out.println(Arrays.toString(eArray));
 
 			System.out.println(Arrays.toString(outputArray));
 			System.out.println(Arrays.toString(blocksumArray));
@@ -63,6 +69,7 @@ public class RadixSort {
 			System.out.println(Arrays.toString(fArray));
 			System.out.println(Arrays.toString(sArray));
 		}
+		System.out.println(Arrays.toString(resultArray));
 		System.out.println(bitLength);
 		releasePlatform();
 	}
@@ -133,7 +140,7 @@ public class RadixSort {
 	}
 
 	public static int[] addBlocksum(int[] scanArray, int[] blocksumArray) {
-		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource2.c");
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/programSource2.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -151,10 +158,10 @@ public class RadixSort {
 		cl_mem memObjects[] = new cl_mem[2];
 		memObjects[0] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_float * n, outputPointer, null);
+				Sizeof.cl_int * n, outputPointer, null);
 		memObjects[1] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_float * n, blocksumPointer, null);
+				Sizeof.cl_int * n, blocksumPointer, null);
 
 		// Create the program from the source code
 		cl_program program = clCreateProgramWithSource(context,
@@ -179,7 +186,7 @@ public class RadixSort {
 
 		// Read the output data
 		clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-				n * Sizeof.cl_float, outputPointer, 0, null, null);
+				n * Sizeof.cl_int, outputPointer, 0, null, null);
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseMemObject(memObjects[1]);
@@ -229,13 +236,13 @@ public class RadixSort {
 			cl_mem memObjects[] = new cl_mem[3];
 			memObjects[0] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_float * n, outputPointer, null);
+					Sizeof.cl_int * n, outputPointer, null);
 			memObjects[1] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_float * n, inputPointer, null);
+					Sizeof.cl_int * n, inputPointer, null);
 			memObjects[2] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_float * n, blocksumPointer, null);
+					Sizeof.cl_int * n, blocksumPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -253,7 +260,7 @@ public class RadixSort {
 			clSetKernelArg(kernel, 1,
 					Sizeof.cl_mem, Pointer.to(memObjects[1]));
 			clSetKernelArg(kernel, 2,
-					local_work_size[0] * Sizeof.cl_float, null);
+					local_work_size[0] * Sizeof.cl_int, null);
 			clSetKernelArg(kernel, 3,
 					Sizeof.cl_mem, Pointer.to(memObjects[2]));
 			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
@@ -264,9 +271,9 @@ public class RadixSort {
 
 			// Read the output data
 			clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-					n * Sizeof.cl_float, outputPointer, 0, null, null);
+					n * Sizeof.cl_int, outputPointer, 0, null, null);
 			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-					n * Sizeof.cl_float, blocksumPointer, 0, null, null);
+					n * Sizeof.cl_int, blocksumPointer, 0, null, null);
 
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
