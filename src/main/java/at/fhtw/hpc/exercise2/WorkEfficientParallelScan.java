@@ -1,5 +1,6 @@
 package at.fhtw.hpc.exercise2;
 
+import at.fhtw.hpc.util.ExecutionStatisticHelper;
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
 
@@ -93,7 +94,9 @@ public class WorkEfficientParallelScan {
 				null, null, null);
 
 		// Create a command-queue for the selected device
-		commandQueue = clCreateCommandQueue(context, device, 0, null);
+		long properties = 0;
+		properties |= CL.CL_QUEUE_PROFILING_ENABLE;
+		commandQueue = clCreateCommandQueue(context, device, properties, null);
 	}
 
 	public static float[] createCompleteScanFromBlocks(float[] scanArray, float[] blocksumArray) {
@@ -119,10 +122,10 @@ public class WorkEfficientParallelScan {
 		}
 		int n = scanArray.length;
 		long global_work_size[] = new long[]{n};
+
 		// Set the work-item dimensions
 		Pointer outputPointer = Pointer.to(scanArray);
 		Pointer blocksumPointer = Pointer.to(blocksumArray);
-
 
 		// Allocate the memory objects for the input- and output data
 		cl_mem memObjects[] = new cl_mem[2];
@@ -151,17 +154,26 @@ public class WorkEfficientParallelScan {
 		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int)local_work_size[0]*2}));
 
 		// Execute the kernel
+        cl_event kernelEvent = new cl_event();
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-				global_work_size, local_work_size, 0, null, null);
+				global_work_size, local_work_size, 0, null, kernelEvent);
 
 		// Read the output data
+        cl_event readEvent = new cl_event();
 		clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-				n * Sizeof.cl_float, outputPointer, 0, null, null);
+				n * Sizeof.cl_float, outputPointer, 0, null, readEvent);
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseMemObject(memObjects[1]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
+
+        // Print statistic
+        ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+        executionStatistic.addEntry("kernel", kernelEvent);
+        executionStatistic.addEntry("read", readEvent);
+        executionStatistic.print();
+
 		return  scanArray;
 	}
 

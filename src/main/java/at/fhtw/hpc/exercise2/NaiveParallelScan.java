@@ -1,5 +1,6 @@
 package at.fhtw.hpc.exercise2;
 
+import at.fhtw.hpc.util.ExecutionStatisticHelper;
 import org.jocl.*;
 
 import java.util.Arrays;
@@ -83,8 +84,10 @@ public class NaiveParallelScan {
 				null, null, null);
 
 		// Create a command-queue for the selected device
+		long properties = 0;
+		properties |= CL.CL_QUEUE_PROFILING_ENABLE;
 		cl_command_queue commandQueue =
-				clCreateCommandQueue(context, device, 0, null);
+				clCreateCommandQueue(context, device, properties, null);
 
 		// Allocate the memory objects for the input- and output data
 		cl_mem memObjects[] = new cl_mem[3];
@@ -122,12 +125,14 @@ public class NaiveParallelScan {
 		long local_work_size[] = new long[]{1};
 
 		// Execute the kernel
+		cl_event kernelEvent = new cl_event();
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-				global_work_size, local_work_size, 0, null, null);
+				global_work_size, local_work_size, 0, null, kernelEvent);
 
 		// Read the output data
+		cl_event readEvent = new cl_event();
 		clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-				n * Sizeof.cl_float, outputPointer, 0, null, null);
+				n * Sizeof.cl_float, outputPointer, 0, null, readEvent);
 
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
@@ -137,6 +142,13 @@ public class NaiveParallelScan {
 		clReleaseCommandQueue(commandQueue);
 		clReleaseContext(context);
 
+		// Show output array
 		System.out.println(Arrays.toString(outputArray));
+
+		// Print statistic
+		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+		executionStatistic.addEntry("kernel", kernelEvent);
+		executionStatistic.addEntry("read", readEvent);
+		executionStatistic.print();
 	}
 }

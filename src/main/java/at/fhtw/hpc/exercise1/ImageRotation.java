@@ -1,5 +1,6 @@
 package at.fhtw.hpc.exercise1;
 
+import at.fhtw.hpc.util.ExecutionStatisticHelper;
 import org.jocl.*;
 
 import javax.imageio.ImageIO;
@@ -97,8 +98,10 @@ public class ImageRotation {
 				null, null, null);
 
 		// Create a command-queue for the selected device
+		long properties = 0;
+		properties |= CL.CL_QUEUE_PROFILING_ENABLE;
 		cl_command_queue commandQueue =
-				clCreateCommandQueue(context, device, 0, null);
+				clCreateCommandQueue(context, device, properties, null);
 
 		// Create the program from the source code
 		cl_program program = clCreateProgramWithSource(context,
@@ -142,18 +145,21 @@ public class ImageRotation {
 		long local_work_size[] = new long[]{1};
 
 		// Execute the kernel
+		cl_event kernelEvent = new cl_event();
 		clEnqueueNDRangeKernel(commandQueue, kernel, 2, null,
-				global_work_size, null, 0, null, null);
+				global_work_size, null, 0, null, kernelEvent);
 
 		// Read the pixel data into the output image
 		DataBufferInt dataBufferDst =
 				(DataBufferInt) outputImage.getRaster().getDataBuffer();
 		int dataDst[] = dataBufferDst.getData();
+
+		cl_event readEvent = new cl_event();
 		clEnqueueReadImage(
 				commandQueue, outputImageMem, true, new long[3],
 				new long[]{width, height, 1},
 				width * Sizeof.cl_uint, 0,
-				Pointer.to(dataDst), 0, null, null);
+				Pointer.to(dataDst), 0, null, readEvent);
 
 		File outputfile = new File("output.png");
 		try {
@@ -161,10 +167,17 @@ public class ImageRotation {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
 		// Release kernel, program
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 		clReleaseCommandQueue(commandQueue);
 		clReleaseContext(context);
+
+		// Print statistic
+		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+		executionStatistic.addEntry("kernel", kernelEvent);
+		executionStatistic.addEntry("read", readEvent);
+		executionStatistic.print();
 	}
 }
