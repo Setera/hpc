@@ -39,7 +39,7 @@ public class NaiveParallelScan {
 		float inputArray[] = {3,1,7,0,4,1,6,3};
 		int n = inputArray.length;
 		float outputArray[] = new float[n];
-		float tempArray[] = new float[2*n];
+		float tempArray[] = new float[2];
 
 		Pointer inputPointer = Pointer.to(inputArray);
 		Pointer outputPointer = Pointer.to(outputArray);

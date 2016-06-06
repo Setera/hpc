@@ -1,6 +1,7 @@
 package at.fhtw.hpc.exercise2;
 
 import at.fhtw.hpc.util.ExecutionStatisticHelper;
+import at.fhtw.hpc.util.TimeLogger;
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
 
@@ -24,13 +25,25 @@ public class WorkEfficientParallelScan {
 	//TODO: Timing info
 
 	public static void main(String args[]) {
-		initPlatform();
-		local_work_size = new long[]{2};
+		ScanComparer.ExecutionStatisticHelper.clear();
+
 		//float inputArray[] = {1, 1, 1, 1};  // 4
 		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};  // 8
 		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 16
 		//float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 32
 		float inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};   // 64
+
+		performScan(inputArray);
+
+		ScanComparer.ExecutionStatisticHelper.print();
+	}
+
+	public static float[] performScan(float inputArray[]) {
+		TimeLogger logger = new TimeLogger();
+		logger.start();
+
+		initPlatform();
+		local_work_size = new long[]{2};
 
 		Scanner scanner = new Scanner(inputArray).invoke();
 		float[] outputArray = scanner.getOutputArray();
@@ -43,10 +56,14 @@ public class WorkEfficientParallelScan {
 
 		releasePlatform();
 
-		System.out.println(Arrays.toString(outputArray));
-		System.out.println(Arrays.toString(blocksumArray));
+		//System.out.println(Arrays.toString(outputArray));
+		//System.out.println(Arrays.toString(blocksumArray));
 
-		System.out.println(Arrays.toString(scannedArray));
+		//System.out.println(Arrays.toString(scannedArray));
+
+		logger.end("parallel scan");
+
+		return scannedArray;
 	}
 
 	private static void releasePlatform() {
@@ -168,11 +185,9 @@ public class WorkEfficientParallelScan {
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
-        // Print statistic
-        ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
-        executionStatistic.addEntry("kernel", kernelEvent);
-        executionStatistic.addEntry("read", readEvent);
-        executionStatistic.print();
+        // Collect statistic
+        ScanComparer.ExecutionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
+		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
 
 		return  scanArray;
 	}
@@ -248,20 +263,29 @@ public class WorkEfficientParallelScan {
 			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 			// Execute the kernel
+			cl_event kernelEvent = new cl_event();
 			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-					global_work_size, local_work_size, 0, null, null);
+					global_work_size, local_work_size, 0, null, kernelEvent);
 
 			// Read the output data
+			cl_event readEvent1 = new cl_event();
 			clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-					n * Sizeof.cl_float, outputPointer, 0, null, null);
+					n * Sizeof.cl_float, outputPointer, 0, null, readEvent1);
+			cl_event readEvent2 = new cl_event();
 			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-					n * Sizeof.cl_float, blocksumPointer, 0, null, null);
+					n * Sizeof.cl_float, blocksumPointer, 0, null, readEvent2);
 
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
 			clReleaseMemObject(memObjects[1]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
+
+			// Collect statistic
+			ScanComparer.ExecutionStatisticHelper.addEntry("scan kernel", kernelEvent);
+			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent1);
+			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent2);
+
 			return this;
 		}
 	}
