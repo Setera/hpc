@@ -17,7 +17,7 @@ import static org.jocl.CL.*;
  */
 public class ImageRotation {
 
-	private static final double angle = 30;
+	private static final double angle = 90;
 
 	private static String programSource = "const sampler_t samplerIn = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
 			"const sampler_t samplerOut = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST; \n" +
@@ -37,7 +37,9 @@ public class ImageRotation {
 			"    if (( ((int)xpos >= 0) && ((int)xpos < W)) && (((int)ypos >= 0) && ((int)ypos < H))) { \n" +
 			"        uint4 pixel = read_imageui(sourceImage, samplerIn, posIn);\n" +
 			"        write_imageui(targetImage, posOut, pixel);\n" +
-			"    } \n" +
+			"    } else {\n" +
+			"		 write_imageui(targetImage, posOut, 0);\n" +
+			"	 }\n" +
 			"}";
 
 	public static void main(String[] args) {

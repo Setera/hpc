@@ -43,7 +43,7 @@ public class WorkEfficientParallelScan {
 		logger.start();
 
 		initPlatform();
-		local_work_size = new long[]{2};
+		local_work_size = new long[]{16};
 
 		Scanner scanner = new Scanner(inputArray).invoke();
 		float[] outputArray = scanner.getOutputArray();

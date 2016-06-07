@@ -16,12 +16,13 @@ public class ScanComparer {
 		// fill array with random numbers
 		Random random = new Random();
 
-		int size = (int) Math.pow(2, 8);
+		int size = (int) Math.pow(2, 10);
 		System.out.println("Perform scan with array size: " + size);
 
 		float[] input = new float[size];
 		for (int i = 0; i < input.length; i++) {
-			input[i] = (float) random.nextInt(9999);
+			//input[i] = (float) random.nextInt(9999);
+			input[i] = 1;
 		}
 
 		float serialOutput[] = Scan.performScan(input);

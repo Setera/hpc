@@ -19,7 +19,7 @@ __kernel void scan(__global float *g_odata,
     }
     if (local_id == 0) {
         int index = global_id / get_local_size(0);
-        blocksum[index] = temp[n - 1];
+        blocksum[index] = temp[get_local_size(0) * 2 - 1];
         temp[n - 1] = 0;
     }
     for (int d = 1; d < n; d *= 2) {
