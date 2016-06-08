@@ -19,7 +19,7 @@ public class WorkEfficientParallelScan {
 
 	private static cl_context context;
 	private static cl_command_queue commandQueue;
-	private static long[] local_work_size;
+	private static long[] local_work_size = new long[1];
 
 	//TODO: Bank conflicts
 	//TODO: Timing info
@@ -43,7 +43,8 @@ public class WorkEfficientParallelScan {
 		logger.start();
 
 		initPlatform();
-		local_work_size = new long[]{16};
+
+		setLocalWorkSize(inputArray.length);
 
 		Scanner scanner = new Scanner(inputArray).invoke();
 		float[] outputArray = scanner.getOutputArray();
@@ -64,6 +65,14 @@ public class WorkEfficientParallelScan {
 		logger.end("parallel scan");
 
 		return scannedArray;
+	}
+
+	private static void setLocalWorkSize(int n) {
+		int localWorkSize = n/4;
+		while (localWorkSize * 2 > CL_DEVICE_MAX_WORK_ITEM_SIZES) {
+			localWorkSize = localWorkSize/2;
+		}
+		local_work_size[0] = localWorkSize;
 	}
 
 	private static void releasePlatform() {
@@ -117,6 +126,7 @@ public class WorkEfficientParallelScan {
 	}
 
 	public static float[] createCompleteScanFromBlocks(float[] scanArray, float[] blocksumArray) {
+		setLocalWorkSize(blocksumArray.length);
 		Scanner scanner = new Scanner(blocksumArray).invoke();
 		float[] outputArray = scanner.getOutputArray();
 		float[] blocksumArray2 = scanner.getBlocksumArray();
@@ -139,6 +149,7 @@ public class WorkEfficientParallelScan {
 		}
 		int n = scanArray.length;
 		long global_work_size[] = new long[]{n};
+		setLocalWorkSize(n);
 
 		// Set the work-item dimensions
 		Pointer outputPointer = Pointer.to(scanArray);
@@ -257,7 +268,7 @@ public class WorkEfficientParallelScan {
 			clSetKernelArg(kernel, 1,
 					Sizeof.cl_mem, Pointer.to(memObjects[1]));
 			clSetKernelArg(kernel, 2,
-					local_work_size[0] * Sizeof.cl_float, null);
+					2 * local_work_size[0] * Sizeof.cl_float, null);
 			clSetKernelArg(kernel, 3,
 					Sizeof.cl_mem, Pointer.to(memObjects[2]));
 			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
@@ -278,6 +289,7 @@ public class WorkEfficientParallelScan {
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
 			clReleaseMemObject(memObjects[1]);
+			clReleaseMemObject(memObjects[2]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
 
