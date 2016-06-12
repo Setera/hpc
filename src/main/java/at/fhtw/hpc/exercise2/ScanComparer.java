@@ -27,6 +27,8 @@ public class ScanComparer {
 
 		int serialOutput[] = SeriellScan.performScan(input);
 
+		int temp[] = WorkEfficientParallelScan.performScan(input);
+
 		ScanComparer.executionStatisticHelper.clear();
 		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
 		ScanComparer.executionStatisticHelper.printSummary();
