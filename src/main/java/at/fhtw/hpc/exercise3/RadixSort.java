@@ -350,7 +350,7 @@ public class RadixSort {
 		return scannedArray;
 	}
 	public static cl_mem addBlocksum(cl_mem scanArray, cl_mem blocksumArray, int scanSize) {
-		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource2.c");
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/addBlocksum.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -376,7 +376,7 @@ public class RadixSort {
 				Sizeof.cl_mem, Pointer.to(scanArray));
 		clSetKernelArg(kernel, 1,
 				Sizeof.cl_mem, Pointer.to(blocksumArray));
-		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int) local_work_size[0] * 2}));
+//		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int) local_work_size[0] * 2}));
 
 		// Execute the kernel
 		cl_event kernelEvent = new cl_event();
