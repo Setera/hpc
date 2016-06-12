@@ -33,13 +33,13 @@ public class RadixSort {
 		int size = (int) Math.pow(2, 10);
 		System.out.println("Array size: " + size);
 
-		Integer[] inputArray = new Integer[size];
-		for (int i = 0; i < inputArray.length; i++) {
-			inputArray[i] = i%10 + 1;//random.nextInt(10);
-		}
+//		Integer[] inputArray = new Integer[size];
+//		for (int i = 0; i < inputArray.length; i++) {
+//			inputArray[i] = i%10 + 1;//random.nextInt(10);
+//		}
 
 		//Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100, 33, 22, 6, 99, 50, 7, 10, 77};
-		//Integer[] inputArray = {4,7,2,6,3,5,1,0};
+		Integer[] inputArray = {4,7,2,6,3,5,1,0};
 
 		int[] inputArrayPrimitive = ArrayUtils.toPrimitive(inputArray);
 		int[] resultArray = Arrays.copyOf(inputArrayPrimitive, inputArrayPrimitive.length);
@@ -47,7 +47,7 @@ public class RadixSort {
 
 		initPlatform();
 //		setLocalWorkSize(inputArray.length);
-		local_work_size[0] = 256;
+
 
 		BigInteger max = new BigInteger(Collections.max(Arrays.asList(inputArray)).toString());
 		int bitLength = max.bitLength();
@@ -56,6 +56,7 @@ public class RadixSort {
 			int n = resultArray.length;
 
 			/** get bit array */
+			setLocalWorkSize(resultArray.length);
 			cl_mem eBuffer = getE(resultArray, i);
 
 			/** scan bit array*/
@@ -71,6 +72,7 @@ public class RadixSort {
 			}
 
 			/** reorder */
+			setLocalWorkSize(resultArray.length);
 			sArray = getD(resultArray, eBuffer, fBuffer);
 
 //			clReleaseMemObject(eBuffer);
@@ -98,14 +100,14 @@ public class RadixSort {
 		}
 	}
 
-//	private static void setLocalWorkSize(int n) {
-//		int localWorkSize = n;
-//		while (localWorkSize > maxWorkItemSizes[0]) {
-//			localWorkSize = localWorkSize / 2;
-//		}
-//		local_work_size[0] = localWorkSize;
-////		System.out.println("Local work size: " + local_work_size[0]);
-//	}
+	private static void setLocalWorkSize(int n) {
+		int localWorkSize = n;
+		while (localWorkSize > maxWorkItemSizes[0]) {
+			localWorkSize = localWorkSize / 2;
+		}
+		local_work_size[0] = localWorkSize;
+//		System.out.println("Local work size: " + local_work_size[0]);
+	}
 
 	private static cl_mem getE(int[] inputarray, int bit) {
 		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/eSource.cl");
@@ -154,6 +156,11 @@ public class RadixSort {
 		cl_event kernelEvent = new cl_event();
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
 				global_work_size, local_work_size, 0, null, kernelEvent);
+
+		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
+				n * Sizeof.cl_int, ePointer, 0, null, null);
+
+		System.out.println("eArray: " + Arrays.toString(eArray));
 
 		// Read the output data
 		cl_event readEvent = new cl_event();
@@ -426,7 +433,7 @@ public class RadixSort {
 		}
 
 		Scanner invoke() {
-			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/kernel.c");
+			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/scan.c");
 			String programSource = "";
 			try {
 				programSource = FileUtils.readFileToString(programSourceFile);
@@ -473,9 +480,9 @@ public class RadixSort {
 
 			// Set the arguments for the kernel
 			clSetKernelArg(kernel, 0,
-					Sizeof.cl_mem, Pointer.to(outputBuffer));
-			clSetKernelArg(kernel, 1,
 					Sizeof.cl_mem, Pointer.to(inputBuffer));
+			clSetKernelArg(kernel, 1,
+					Sizeof.cl_mem, Pointer.to(outputBuffer));
 			clSetKernelArg(kernel, 2,
 					Sizeof.cl_mem, Pointer.to(blocksumBuffer));
 //			clSetKernelArg(kernel, 3,
@@ -495,6 +502,8 @@ public class RadixSort {
 			cl_event readEvent2 = new cl_event();
 			clEnqueueReadBuffer(commandQueue, blocksumBuffer, CL_TRUE, 0,
 					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readEvent2);
+			System.out.println("oArray: " + Arrays.toString(outputArray));
+			System.out.println("bArray: " + Arrays.toString(blocksumArray));
 
 			outputSize = outputArray.length;
 			blocksumSize = blocksumArray.length;
