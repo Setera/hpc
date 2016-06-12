@@ -1,13 +1,13 @@
 __kernel void scan(__global float *g_odata,
                    __global float *g_idata,
-                   __local float *temp,
+                   __global float *temp,
                    __global float *blocksum,
                    int n) {
     int global_id = get_global_id(0);
 	int local_id = get_local_id(0);
 	int group_id = get_group_id(0);
 	int group_offset = group_id * n;
-	printf("group: %d, group offset: %d\n", group_id, group_offset);
+//	printf("group: %d, group offset: %d\n", group_id, group_offset);
 //	printf("global: %d, local: %d, group: %d\n", global_id, local_id, group_id);
     int offset = 1;
     temp[2*local_id+group_offset] = g_idata[2*global_id];
