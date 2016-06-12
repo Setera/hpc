@@ -1,7 +1,7 @@
-__kernel void scan(__global float *g_odata,
-                   __global float *g_idata,
-                   __global float *temp,
-                   __global float *blocksum,
+__kernel void scan(__global int *g_odata,
+                   __global int *g_idata,
+                   __global int *temp,
+                   __global int *blocksum,
                    int n) {
     int global_id = get_global_id(0);
 	int local_id = get_local_id(0);
@@ -39,7 +39,7 @@ __kernel void scan(__global float *g_odata,
         if (local_id < d) {
             int ai = offset*(2*local_id+1)-1;
             int bi = offset*(2*local_id+2)-1;
-            float t = temp[ai+group_offset];
+            int t = temp[ai+group_offset];
             temp[ai+group_offset] = temp[bi+group_offset];
             temp[bi+group_offset] += t;
         }
