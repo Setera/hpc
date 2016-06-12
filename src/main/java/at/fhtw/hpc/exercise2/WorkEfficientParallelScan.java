@@ -76,6 +76,7 @@ public class WorkEfficientParallelScan {
 			localWorkSize = localWorkSize/2;
 		}
 		local_work_size[0] = localWorkSize;
+		System.out.println("Local work size: " + local_work_size[0]);
 	}
 
 	private static void releasePlatform() {
@@ -269,10 +270,13 @@ public class WorkEfficientParallelScan {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+
 			int n = inputArray.length;
+			int blocksumN = n / ((int) local_work_size[0] * 2);
+			blocksumN = blocksumN > 0 ? blocksumN : 1;
 			long global_work_size[] = new long[]{n};
 			outputArray = new float[n];
-			blocksumArray = new float[n / ((int) local_work_size[0] * 2)];
+			blocksumArray = new float[blocksumN];
 
 			// Set the work-item dimensions
 
@@ -291,7 +295,7 @@ public class WorkEfficientParallelScan {
 					Sizeof.cl_float * n, inputPointer, null);
 			memObjects[2] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_float * n, blocksumPointer, null);
+					Sizeof.cl_float * blocksumN, blocksumPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -325,12 +329,13 @@ public class WorkEfficientParallelScan {
 					n * Sizeof.cl_float, outputPointer, 0, null, readEvent1);
 			cl_event readEvent2 = new cl_event();
 			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-					n * Sizeof.cl_float, blocksumPointer, 0, null, readEvent2);
+					blocksumN * Sizeof.cl_float, blocksumPointer, 0, null, readEvent2);
+
 
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
 			clReleaseMemObject(memObjects[1]);
-			//clReleaseMemObject(memObjects[2]);
+			clReleaseMemObject(memObjects[2]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
 
