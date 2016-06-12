@@ -7,6 +7,8 @@ import org.jocl.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import static org.jocl.CL.*;
@@ -19,6 +21,7 @@ public class WorkEfficientParallelScan {
 
 	private static cl_context context;
 	private static cl_command_queue commandQueue;
+    private static long maxWorkItemSizes[];
 	private static long[] local_work_size = new long[1];
 
 	//TODO: Bank conflicts
@@ -68,8 +71,8 @@ public class WorkEfficientParallelScan {
 	}
 
 	private static void setLocalWorkSize(int n) {
-		int localWorkSize = n/4;
-		while (localWorkSize * 2 > CL_DEVICE_MAX_WORK_ITEM_SIZES) {
+		int localWorkSize = n/2;
+		while (localWorkSize * 2 > maxWorkItemSizes[0]) {
 			localWorkSize = localWorkSize/2;
 		}
 		local_work_size[0] = localWorkSize;
@@ -80,7 +83,7 @@ public class WorkEfficientParallelScan {
 		clReleaseContext(context);
 	}
 
-	public static void initPlatform() {
+	public static cl_device_id initPlatform() {
 		// The platform, device type and device number
 		// that will be used
 		int platformIndex = 0;
@@ -123,6 +126,10 @@ public class WorkEfficientParallelScan {
 		long properties = 0;
 		properties |= CL.CL_QUEUE_PROFILING_ENABLE;
 		commandQueue = clCreateCommandQueue(context, device, properties, null);
+
+        maxWorkItemSizes = getSizes(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, 3);
+
+        return device;
 	}
 
 	public static float[] createCompleteScanFromBlocks(float[] scanArray, float[] blocksumArray) {
@@ -201,6 +208,40 @@ public class WorkEfficientParallelScan {
 		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
 
 		return  scanArray;
+	}
+
+	/**
+	 * Returns the values of the device info parameter with the given name
+	 *
+	 * @param device The device
+	 * @param paramName The parameter name
+	 * @param numValues The number of values
+	 * @return The value
+	 */
+	private static long[] getSizes(cl_device_id device, int paramName, int numValues)
+	{
+		// The size of the returned data has to depend on
+		// the size of a size_t, which is handled here
+		ByteBuffer buffer = ByteBuffer.allocate(
+				numValues * Sizeof.size_t).order(ByteOrder.nativeOrder());
+		clGetDeviceInfo(device, paramName, Sizeof.size_t * numValues,
+				Pointer.to(buffer), null);
+		long values[] = new long[numValues];
+		if (Sizeof.size_t == 4)
+		{
+			for (int i=0; i<numValues; i++)
+			{
+				values[i] = buffer.getInt(i * Sizeof.size_t);
+			}
+		}
+		else
+		{
+			for (int i=0; i<numValues; i++)
+			{
+				values[i] = buffer.getLong(i * Sizeof.size_t);
+			}
+		}
+		return values;
 	}
 
 	private static class Scanner {
@@ -289,7 +330,7 @@ public class WorkEfficientParallelScan {
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
 			clReleaseMemObject(memObjects[1]);
-			clReleaseMemObject(memObjects[2]);
+			//clReleaseMemObject(memObjects[2]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
 
