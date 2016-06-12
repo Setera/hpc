@@ -16,7 +16,7 @@ public class ScanComparer {
 		// fill array with random numbers
 		Random random = new Random();
 
-		int size = (int) Math.pow(2, 10);
+		int size = (int) Math.pow(2, 18);
 		System.out.println("Perform scan with array size: " + size);
 
 		float[] input = new float[size];

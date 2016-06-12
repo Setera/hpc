@@ -276,7 +276,8 @@ public class WorkEfficientParallelScan {
 			long global_work_size[] = new long[]{n};
 			outputArray = new float[n];
 			blocksumArray = new float[blocksumN];
-			float[] tempArray = new float[n*n];
+			int tempN = local_work_size[0] < n ? n*(n/((int)local_work_size[0]*2)) : n;
+			float[] tempArray = new float[tempN];
 
 			// Set the work-item dimensions
 
@@ -286,7 +287,7 @@ public class WorkEfficientParallelScan {
 			Pointer tempPointer = Pointer.to(tempArray);
 
 			// Allocate the memory objects for the input- and output data
-			cl_mem memObjects[] = new cl_mem[3];
+			cl_mem memObjects[] = new cl_mem[4];
 			memObjects[0] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 					Sizeof.cl_float * n, outputPointer, null);
@@ -298,7 +299,7 @@ public class WorkEfficientParallelScan {
 					Sizeof.cl_float * blocksumN, blocksumPointer, null);
 			memObjects[3] = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_float * n *n, tempPointer, null);
+					Sizeof.cl_float * tempN, tempPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -316,7 +317,7 @@ public class WorkEfficientParallelScan {
 			clSetKernelArg(kernel, 1,
 					Sizeof.cl_mem, Pointer.to(memObjects[1]));
 			clSetKernelArg(kernel, 2,
-					Sizeof.cl_mem, Pointer.to(memObjects[1]));
+					Sizeof.cl_mem, Pointer.to(memObjects[3]));
 			clSetKernelArg(kernel, 3,
 					Sizeof.cl_mem, Pointer.to(memObjects[2]));
 			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
