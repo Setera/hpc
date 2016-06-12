@@ -284,7 +284,7 @@ public class WorkEfficientParallelScanWithLocal {
 		}
 
 		Scanner invoke() {
-			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/kernel.c");
+			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/scan.c");
 			String programSource = "";
 			try {
 				programSource = FileUtils.readFileToString(programSourceFile);
