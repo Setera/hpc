@@ -11,19 +11,19 @@ public class Scan {
 
 	public static void main(String[] args) {
 		// fill array with random numbers
-		float[] in = new float[SIZE];
+		int[] in = new int[SIZE];
 		for(int i = 0; i < in.length; i++)	{
-			in[i] = (float)(Math.random() * 5);
+			in[i] = (int)(Math.random() * 5);
 		}
 
 		performScan(in);
 	}
 
-	public static float[] performScan(float in[]) {
+	public static int[] performScan(int in[]) {
 		TimeLogger logger = new TimeLogger();
 		logger.start();
 
-		float[] outSeq = new float[in.length];
+		int[] outSeq = new int[in.length];
 
 		outSeq[0] = 0;
 		for(int i = 1; i < outSeq.length; i++)	{

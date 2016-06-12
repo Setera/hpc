@@ -16,19 +16,19 @@ public class ScanComparer {
 		// fill array with random numbers
 		Random random = new Random();
 
-		int size = (int) Math.pow(2, 18);
+		int size = (int) Math.pow(2, 19);
 		System.out.println("Perform scan with array size: " + size);
 
-		float[] input = new float[size];
+		int[] input = new int[size];
 		for (int i = 0; i < input.length; i++) {
-			//input[i] = (float) random.nextInt(9999);
+			//input[i] = (int) random.nextInt(9999);
 			input[i] = 1;
 		}
 
-		float serialOutput[] = Scan.performScan(input);
+		int serialOutput[] = Scan.performScan(input);
 
 		ScanComparer.ExecutionStatisticHelper.clear();
-		float parallelOutput[] = WorkEfficientParallelScan.performScan(input);
+		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
 		ScanComparer.ExecutionStatisticHelper.printSummary();
 
 		// compare results
