@@ -1,6 +1,6 @@
 package at.fhtw.hpc.exercise2;
 
-import at.fhtw.hpc.util.ExecutionStatisticHelper2;
+import at.fhtw.hpc.util.ExecutionStatisticHelper;
 
 import java.util.Random;
 
@@ -10,13 +10,13 @@ import java.util.Random;
 public class ScanComparer {
 
 
-	public static ExecutionStatisticHelper2 ExecutionStatisticHelper = new ExecutionStatisticHelper2();
+	public static at.fhtw.hpc.util.ExecutionStatisticHelper ExecutionStatisticHelper = new ExecutionStatisticHelper();
 
 	public static void main(String args[]) {
 		// fill array with random numbers
 		Random random = new Random();
 
-		int size = (int) Math.pow(2, 10);
+		int size = (int) Math.pow(2, 18);
 		System.out.println("Perform scan with array size: " + size);
 
 		float[] input = new float[size];
