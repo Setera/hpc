@@ -16,7 +16,7 @@ public class ScanComparer {
 		// fill array with random numbers
 		Random random = new Random();
 
-		int size = (int) Math.pow(2, 19);
+		int size = (int) Math.pow(2, 24);
 		System.out.println("Perform scan with array size: " + size);
 
 		int[] input = new int[size];
@@ -28,7 +28,7 @@ public class ScanComparer {
 		int serialOutput[] = Scan.performScan(input);
 
 		ScanComparer.ExecutionStatisticHelper.clear();
-		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
+		int parallelOutput[] = WorkEfficientParallelScanWithLocal.performScan(input);
 		ScanComparer.ExecutionStatisticHelper.printSummary();
 
 		// compare results
