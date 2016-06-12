@@ -35,7 +35,7 @@ public class RadixSort {
 
 		Integer[] inputArray = new Integer[size];
 		for (int i = 0; i < inputArray.length; i++) {
-			inputArray[i] = random.nextInt(10);
+			inputArray[i] = i%10 + 1;//random.nextInt(10);
 		}
 
 		//Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100, 33, 22, 6, 99, 50, 7, 10, 77};
@@ -43,12 +43,11 @@ public class RadixSort {
 
 		int[] inputArrayPrimitive = ArrayUtils.toPrimitive(inputArray);
 		int[] resultArray = Arrays.copyOf(inputArrayPrimitive, inputArrayPrimitive.length);
-//		int bArray[] = new int[inputArray.length];
-//		int eArray[] = new int[inputArray.length];
 		int sArray[] = new int[inputArray.length];
 
 		initPlatform();
-		setLocalWorkSize(inputArray.length);
+//		setLocalWorkSize(inputArray.length);
+		local_work_size[0] = 256;
 
 		BigInteger max = new BigInteger(Collections.max(Arrays.asList(inputArray)).toString());
 		int bitLength = max.bitLength();
@@ -74,17 +73,16 @@ public class RadixSort {
 			/** reorder */
 			sArray = getD(resultArray, eBuffer, fBuffer);
 
+//			clReleaseMemObject(eBuffer);
+//			clReleaseMemObject(outputBuffer);
+//			clReleaseMemObject(blocksumBuffer);
+//			clReleaseMemObject(fBuffer);
+
 			resultArray = Arrays.copyOf(sArray, sArray.length);
 
-			//System.out.println(Arrays.toString(bArray));
-//			System.out.println(Arrays.toString(eArray));
+//			System.out.println(Arrays.toString(sArray));
+//			System.out.println();
 
-			//System.out.println(Arrays.toString(outputArray));
-			//System.out.println(Arrays.toString(blocksumArray));
-
-//			System.out.println(Arrays.toString(fArray));
-			System.out.println(Arrays.toString(sArray));
-			System.out.println();
 		}
 		releasePlatform();
 
@@ -100,14 +98,14 @@ public class RadixSort {
 		}
 	}
 
-	private static void setLocalWorkSize(int n) {
-		int localWorkSize = n;
-		while (localWorkSize > maxWorkItemSizes[0]) {
-			localWorkSize = localWorkSize / 2;
-		}
-		local_work_size[0] = localWorkSize;
-		System.out.println("Local work size: " + local_work_size[0]);
-	}
+//	private static void setLocalWorkSize(int n) {
+//		int localWorkSize = n;
+//		while (localWorkSize > maxWorkItemSizes[0]) {
+//			localWorkSize = localWorkSize / 2;
+//		}
+//		local_work_size[0] = localWorkSize;
+////		System.out.println("Local work size: " + local_work_size[0]);
+//	}
 
 	private static cl_mem getE(int[] inputarray, int bit) {
 		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/eSource.cl");
@@ -117,7 +115,7 @@ public class RadixSort {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		setLocalWorkSize(inputarray.length);
+//		setLocalWorkSize(inputarray.length);
 		int[] eArray = new int[inputarray.length];
 		int n = inputarray.length;
 		long global_work_size[] = new long[]{n};
@@ -159,12 +157,9 @@ public class RadixSort {
 
 		// Read the output data
 		cl_event readEvent = new cl_event();
-//		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
-//				n * Sizeof.cl_int, ePointer, 0, null, readEvent);
 
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
-//		clReleaseMemObject(memObjects[1]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
@@ -185,13 +180,11 @@ public class RadixSort {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		setLocalWorkSize(inputarray.length);
+//		setLocalWorkSize(inputarray.length);
 		int[] dArray = new int[inputarray.length];
 		int n = inputarray.length;
 		long global_work_size[] = new long[]{n};
 		Pointer inputPointer = Pointer.to(inputarray);
-//		Pointer ePointer = Pointer.to(eArray);
-//		Pointer fPointer = Pointer.to(fArray);
 		Pointer dPointer = Pointer.to(dArray);
 
 		// Allocate the memory objects for the input- and output data
@@ -199,12 +192,6 @@ public class RadixSort {
 		memObjects[0] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_int * n, inputPointer, null);
-//		memObjects[1] = clCreateBuffer(context,
-//				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//				Sizeof.cl_int * n, ePointer, null);
-//		memObjects[2] = clCreateBuffer(context,
-//				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//				Sizeof.cl_int * n, fPointer, null);
 		memObjects[1] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_int * n, dPointer, null);
@@ -243,8 +230,8 @@ public class RadixSort {
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseMemObject(memObjects[1]);
-		clReleaseMemObject(eBuffer);
-		clReleaseMemObject(fBuffer);
+//		clReleaseMemObject(eBuffer);
+//		clReleaseMemObject(fBuffer);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
@@ -340,8 +327,11 @@ public class RadixSort {
 	}
 
 	public static cl_mem createCompleteScanFromBlocks(cl_mem scanBuffer, cl_mem blocksumBuffer, int blocksumSize, int scanSize) {
-		System.out.println("hallo");
-		setLocalWorkSize(blocksumSize);
+//		setLocalWorkSize(blocksumSize);
+		long currentWorkSize = local_work_size[0];
+		if(currentWorkSize > blocksumSize) {
+			local_work_size[0] = blocksumSize;
+		}
 		Scanner scanner = new Scanner(blocksumBuffer, blocksumSize).invoke();
 		cl_mem outputBuffer = scanner.getOutputBuffer();
 		cl_mem blocksumBuffer2 = scanner.getBlocksumBuffer();
@@ -352,7 +342,11 @@ public class RadixSort {
 			outputBuffer = createCompleteScanFromBlocks(outputBuffer, blocksumBuffer2, blocksumsize2, outputSize2);
 		}
 
+		local_work_size[0] = currentWorkSize;
+
 		cl_mem scannedArray = addBlocksum(scanBuffer, outputBuffer, scanSize);
+		clReleaseMemObject(outputBuffer);
+		clReleaseMemObject(blocksumBuffer2);
 		return scannedArray;
 	}
 	public static cl_mem addBlocksum(cl_mem scanArray, cl_mem blocksumArray, int scanSize) {
@@ -365,20 +359,7 @@ public class RadixSort {
 		}
 		int n = scanSize;
 		long global_work_size[] = new long[]{n};
-		setLocalWorkSize(n);
-
-		// Set the work-item dimensions
-//		Pointer outputPointer = Pointer.to(scanArray);
-//		Pointer blocksumPointer = Pointer.to(blocksumArray);
-
-		// Allocate the memory objects for the input- and output data
-//		cl_mem memObjects[] = new cl_mem[2];
-//		memObjects[0] = clCreateBuffer(context,
-//				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//				Sizeof.cl_int * n, outputPointer, null);
-//		memObjects[1] = clCreateBuffer(context,
-//				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//				Sizeof.cl_int * n, blocksumPointer, null);
+//		setLocalWorkSize(n);
 
 		// Create the program from the source code
 		cl_program program = clCreateProgramWithSource(context,
@@ -404,17 +385,13 @@ public class RadixSort {
 
 		// Read the output data
 		cl_event readEvent = new cl_event();
-//		clEnqueueReadBuffer(commandQueue, scanArray, CL_TRUE, 0,
-//				n * Sizeof.cl_int, outputPointer, 0, null, readEvent);
 		// Release kernel, program, and memory objects
-//		clReleaseMemObject(memObjects[0]);
-//		clReleaseMemObject(memObjects[1]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
 		// Collect statistic
-		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
-		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
+//		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
+//		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
 
 		return scanArray;
 	}
@@ -449,7 +426,7 @@ public class RadixSort {
 		}
 
 		Scanner invoke() {
-			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource.c");
+			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/kernel.c");
 			String programSource = "";
 			try {
 				programSource = FileUtils.readFileToString(programSourceFile);
@@ -463,30 +440,26 @@ public class RadixSort {
 			long global_work_size[] = new long[]{n};
 			int[] outputArray = new int[n];
 			int[] blocksumArray = new int[blocksumN];
-			int tempN = local_work_size[0] < n ? n*(n/((int)local_work_size[0]*2)) : n;
-			int[] tempArray = new int[tempN];
+//			int tempN = local_work_size[0] < n ? n*(n/((int)local_work_size[0]*2)) : n;
+//			int[] tempArray = new int[tempN];
 
 			// Set the work-item dimensions
 
-//			Pointer inputPointer = Pointer.to(inputArray);
 			Pointer outputPointer = Pointer.to(outputArray);
 			Pointer blocksumPointer = Pointer.to(blocksumArray);
-			Pointer tempPointer = Pointer.to(tempArray);
+//			Pointer tempPointer = Pointer.to(tempArray);
 
 			// Allocate the memory objects for the input- and output data
-			cl_mem memObjects[] = new cl_mem[1];
+//			cl_mem memObjects[] = new cl_mem[1];
 			outputBuffer = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 					Sizeof.cl_int * n, outputPointer, null);
-//			memObjects[1] = clCreateBuffer(context,
-//					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//					Sizeof.cl_int * n, inputPointer, null);
 			blocksumBuffer = clCreateBuffer(context,
 					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 					Sizeof.cl_int * blocksumN, blocksumPointer, null);
-			memObjects[0] = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * tempN, tempPointer, null);
+//			memObjects[0] = clCreateBuffer(context,
+//					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+//					Sizeof.cl_int * tempN, tempPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -505,8 +478,9 @@ public class RadixSort {
 					Sizeof.cl_mem, Pointer.to(inputBuffer));
 			clSetKernelArg(kernel, 2,
 					Sizeof.cl_mem, Pointer.to(blocksumBuffer));
-			clSetKernelArg(kernel, 3,
-					Sizeof.cl_mem, Pointer.to(memObjects[0]));
+//			clSetKernelArg(kernel, 3,
+//					Sizeof.cl_mem, Pointer.to(memObjects[0]));
+			clSetKernelArg(kernel, 3, Sizeof.cl_int * local_work_size[0] * 2, null);
 			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 			// Execute the kernel
@@ -526,9 +500,7 @@ public class RadixSort {
 			blocksumSize = blocksumArray.length;
 
 			// Release kernel, program, and memory objects
-			clReleaseMemObject(memObjects[0]);
-//			clReleaseMemObject(memObjects[1]);
-//			clReleaseMemObject(memObjects[2]);
+//			clReleaseMemObject(memObjects[0]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
 
