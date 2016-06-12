@@ -46,6 +46,4 @@ __kernel void scan(__global int *g_idata,
             g_odata[2*local_id+1+global_offset] = temp[2*local_id+1];
         }
     }
-    //g_odata[2*global_id] = temp[2*local_id];
-    //g_odata[2*global_id+1] = temp[2*local_id+1];
 };
