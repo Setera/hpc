@@ -30,7 +30,7 @@ public class RadixSort {
 
 	public static void main(String args[]) {
 		Random random = new Random();
-		int size = (int) Math.pow(2, 4);
+		int size = (int) Math.pow(2, 10);
 		System.out.println("Array size: " + size);
 
 		Integer[] inputArray = new Integer[size];
@@ -237,7 +237,7 @@ public class RadixSort {
 
 		// Read the output data
 		cl_event readEvent = new cl_event();
-		clEnqueueReadBuffer(commandQueue, memObjects[3], CL_TRUE, 0,
+		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
 				n * Sizeof.cl_int, dPointer, 0, null, readEvent);
 
 		// Release kernel, program, and memory objects
@@ -445,7 +445,7 @@ public class RadixSort {
 		}
 
 		int getBlocksumSize() {
-			return outputSize;
+			return blocksumSize;
 		}
 
 		Scanner invoke() {
@@ -516,11 +516,11 @@ public class RadixSort {
 
 			// Read the output data
 			cl_event readEvent1 = new cl_event();
-//			clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-//					n * Sizeof.cl_int, outputPointer, 0, null, readEvent1);
-//			cl_event readEvent2 = new cl_event();
-//			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-//					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readEvent2);
+			clEnqueueReadBuffer(commandQueue, outputBuffer, CL_TRUE, 0,
+					n * Sizeof.cl_int, outputPointer, 0, null, readEvent1);
+			cl_event readEvent2 = new cl_event();
+			clEnqueueReadBuffer(commandQueue, blocksumBuffer, CL_TRUE, 0,
+					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readEvent2);
 
 			outputSize = outputArray.length;
 			blocksumSize = blocksumArray.length;
