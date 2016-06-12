@@ -25,7 +25,7 @@ public class WorkEfficientParallelScan {
 	private static long[] local_work_size = new long[1];
 
 	public static void main(String args[]) {
-		ScanComparer.ExecutionStatisticHelper.clear();
+		ScanComparer.executionStatisticHelper.clear();
 
 		//int inputArray[] = {1, 1, 1, 1};  // 4
 		//int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};  // 8
@@ -49,7 +49,7 @@ public class WorkEfficientParallelScan {
 			}
 		}
 
-		ScanComparer.ExecutionStatisticHelper.print();
+		ScanComparer.executionStatisticHelper.print();
 	}
 
 	public static int[] performScan(int inputArray[]) {
@@ -71,12 +71,6 @@ public class WorkEfficientParallelScan {
 		}
 
 		releasePlatform();
-
-//		for (int i = 0; i < inputArray.length; i++) {
-//			if (outputArray[i] != i) {
-//				System.out.println(i + ": " + outputArray[i]);
-//			}
-//		}
 
 		//System.out.println(Arrays.toString(outputArray));
 		//System.out.println(Arrays.toString(blocksumArray));
@@ -182,7 +176,6 @@ public class WorkEfficientParallelScan {
 		}
 		int n = scanArray.length;
 		long global_work_size[] = new long[]{n};
-		//setLocalWorkSize(n);
 
 		// Set the work-item dimensions
 		Pointer outputPointer = Pointer.to(scanArray);
@@ -229,8 +222,8 @@ public class WorkEfficientParallelScan {
 		clReleaseProgram(program);
 
 		// Collect statistic
-		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
-		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
+		ScanComparer.executionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
+		ScanComparer.executionStatisticHelper.addEntry("blocksum read", readEvent);
 
 		return scanArray;
 	}

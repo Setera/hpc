@@ -10,7 +10,7 @@ import java.util.Random;
 public class ScanComparer {
 
 
-	public static at.fhtw.hpc.util.ExecutionStatisticHelper ExecutionStatisticHelper = new ExecutionStatisticHelper();
+	public static ExecutionStatisticHelper executionStatisticHelper = new ExecutionStatisticHelper();
 
 	public static void main(String args[]) {
 		// fill array with random numbers
@@ -27,9 +27,9 @@ public class ScanComparer {
 
 		int serialOutput[] = SeriellScan.performScan(input);
 
-		ScanComparer.ExecutionStatisticHelper.clear();
+		ScanComparer.executionStatisticHelper.clear();
 		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
-		ScanComparer.ExecutionStatisticHelper.printSummary();
+		ScanComparer.executionStatisticHelper.printSummary();
 
 		// compare results
 		for (int i = 0; i < serialOutput.length; i++) {
