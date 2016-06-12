@@ -1,6 +1,6 @@
 package at.fhtw.hpc.exercise3;
 
-import at.fhtw.hpc.exercise2.ScanComparer;
+import at.fhtw.hpc.util.ExecutionStatisticHelper;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jocl.*;
@@ -30,24 +30,20 @@ public class RadixSort {
 
 	public static void main(String args[]) {
 		Random random = new Random();
-		int size = (int) Math.pow(2, 10);
+		int size = (int) Math.pow(2, 20);
 		System.out.println("Array size: " + size);
 
-//		Integer[] inputArray = new Integer[size];
-//		for (int i = 0; i < inputArray.length; i++) {
-//			inputArray[i] = i%10 + 1;//random.nextInt(10);
-//		}
-
-		//Integer[] inputArray = {2, 3, 4, 7, 1, 0, 5, 100, 33, 22, 6, 99, 50, 7, 10, 77};
-		Integer[] inputArray = {4,7,2,6,3,5,1,0};
+		Integer[] inputArray = new Integer[size];
+		for (int i = 0; i < inputArray.length; i++) {
+			inputArray[i] = random.nextInt(10);
+			//inputArray[i] = i%10 + 1;
+		}
 
 		int[] inputArrayPrimitive = ArrayUtils.toPrimitive(inputArray);
 		int[] resultArray = Arrays.copyOf(inputArrayPrimitive, inputArrayPrimitive.length);
 		int sArray[] = new int[inputArray.length];
 
 		initPlatform();
-//		setLocalWorkSize(inputArray.length);
-
 
 		BigInteger max = new BigInteger(Collections.max(Arrays.asList(inputArray)).toString());
 		int bitLength = max.bitLength();
@@ -57,40 +53,26 @@ public class RadixSort {
 
 			/** get bit array */
 			setLocalWorkSize(resultArray.length);
-			cl_mem eBuffer = getE(resultArray, i);
+			//local_work_size[0] = 64;
+			int[] eArray = getE(resultArray, i);
 
 			/** scan bit array*/
-			Scanner scanner = new Scanner(eBuffer, n).invoke();
-			cl_mem outputBuffer = scanner.getOutputBuffer();
-			cl_mem blocksumBuffer = scanner.getBlocksumBuffer();
-			int outputSize = scanner.getOutputSize();
-			int blocksumSize = scanner.getBlocksumSize();
+			Scanner scanner = new Scanner(eArray).invoke();
+			int[] outputArray = scanner.getOutputArray();
+			int[] blocksumArray = scanner.getBlocksumArray();
 
-			cl_mem fBuffer = outputBuffer;
-			if(blocksumSize > 1) {
-				fBuffer = createCompleteScanFromBlocks(outputBuffer, blocksumBuffer, blocksumSize, outputSize);
+			int[] fArray = outputArray;
+			if(blocksumArray.length > 1) {
+				fArray = createCompleteScanFromBlocks(outputArray, blocksumArray);
 			}
 
 			/** reorder */
 			setLocalWorkSize(resultArray.length);
-			sArray = getD(resultArray, eBuffer, fBuffer);
-
-//			clReleaseMemObject(eBuffer);
-//			clReleaseMemObject(outputBuffer);
-//			clReleaseMemObject(blocksumBuffer);
-//			clReleaseMemObject(fBuffer);
+			sArray = getD(resultArray, eArray, fArray);
 
 			resultArray = Arrays.copyOf(sArray, sArray.length);
-
-//			System.out.println(Arrays.toString(sArray));
-//			System.out.println();
-
 		}
 		releasePlatform();
-
-		System.out.println(Arrays.toString(inputArray));
-		System.out.println(Arrays.toString(resultArray));
-		System.out.println(bitLength);
 
 		for (int i = 1; i < resultArray.length; i++) {
 			if (resultArray[i] < resultArray[i-1]) {
@@ -98,18 +80,13 @@ public class RadixSort {
 				return;
 			}
 		}
-	}
 
-	private static void setLocalWorkSize(int n) {
-		int localWorkSize = n;
-		while (localWorkSize > maxWorkItemSizes[0]) {
-			localWorkSize = localWorkSize / 2;
+		if(resultArray[resultArray.length-1] == 0){
+			System.out.println("Sort was wrong (Zero at last index)");
 		}
-		local_work_size[0] = localWorkSize;
-//		System.out.println("Local work size: " + local_work_size[0]);
 	}
 
-	private static cl_mem getE(int[] inputarray, int bit) {
+	private static int[] getE(int[] inputarray, int bit) {
 		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/eSource.cl");
 		String programSource = "";
 		try {
@@ -117,14 +94,13 @@ public class RadixSort {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-//		setLocalWorkSize(inputarray.length);
+
 		int[] eArray = new int[inputarray.length];
 		int n = inputarray.length;
 		long global_work_size[] = new long[]{n};
 		// Set the work-item dimensions
 		Pointer inputPointer = Pointer.to(inputarray);
 		Pointer ePointer = Pointer.to(eArray);
-
 
 		// Allocate the memory objects for the input- and output data
 		cl_mem memObjects[] = new cl_mem[2];
@@ -157,29 +133,24 @@ public class RadixSort {
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
 				global_work_size, local_work_size, 0, null, kernelEvent);
 
+        cl_event readEvent = new cl_event();
 		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
-				n * Sizeof.cl_int, ePointer, 0, null, null);
-
-		System.out.println("eArray: " + Arrays.toString(eArray));
-
-		// Read the output data
-		cl_event readEvent = new cl_event();
+				n * Sizeof.cl_int, ePointer, 0, null, readEvent);
 
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
-
 		// Print statistic
-		/*ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
 		executionStatistic.addEntry("kernel", kernelEvent);
 		executionStatistic.addEntry("read", readEvent);
-		executionStatistic.print();*/
-		return memObjects[1];
+		executionStatistic.print();
+		return eArray;
 	}
 
-	private static int[] getD(int[] inputarray, cl_mem eBuffer, cl_mem fBuffer) {
+	private static int[] getD(int[] inputarray, int[] eArray, int[] fArray) {
 		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise3/dSource.cl");
 		String programSource = "";
 		try {
@@ -187,19 +158,27 @@ public class RadixSort {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-//		setLocalWorkSize(inputarray.length);
+
 		int[] dArray = new int[inputarray.length];
 		int n = inputarray.length;
 		long global_work_size[] = new long[]{n};
 		Pointer inputPointer = Pointer.to(inputarray);
+		Pointer ePointer = Pointer.to(eArray);
+		Pointer fPointer = Pointer.to(fArray);
 		Pointer dPointer = Pointer.to(dArray);
 
 		// Allocate the memory objects for the input- and output data
-		cl_mem memObjects[] = new cl_mem[2];
+		cl_mem memObjects[] = new cl_mem[4];
 		memObjects[0] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_int * n, inputPointer, null);
 		memObjects[1] = clCreateBuffer(context,
+				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_int * n, ePointer, null);
+		memObjects[2] = clCreateBuffer(context,
+				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_int * n, fPointer, null);
+		memObjects[3] = clCreateBuffer(context,
 				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_int * n, dPointer, null);
 
@@ -217,11 +196,11 @@ public class RadixSort {
 		clSetKernelArg(kernel, 0,
 				Sizeof.cl_mem, Pointer.to(memObjects[0]));
 		clSetKernelArg(kernel, 1,
-				Sizeof.cl_mem, Pointer.to(eBuffer));
-		clSetKernelArg(kernel, 2,
-				Sizeof.cl_mem, Pointer.to(fBuffer));
-		clSetKernelArg(kernel, 3,
 				Sizeof.cl_mem, Pointer.to(memObjects[1]));
+		clSetKernelArg(kernel, 2,
+				Sizeof.cl_mem, Pointer.to(memObjects[2]));
+		clSetKernelArg(kernel, 3,
+				Sizeof.cl_mem, Pointer.to(memObjects[3]));
 		clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 		// Execute the kernel
@@ -231,24 +210,30 @@ public class RadixSort {
 
 		// Read the output data
 		cl_event readEvent = new cl_event();
-		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
+		clEnqueueReadBuffer(commandQueue, memObjects[3], CL_TRUE, 0,
 				n * Sizeof.cl_int, dPointer, 0, null, readEvent);
 
 		// Release kernel, program, and memory objects
 		clReleaseMemObject(memObjects[0]);
 		clReleaseMemObject(memObjects[1]);
-//		clReleaseMemObject(eBuffer);
-//		clReleaseMemObject(fBuffer);
 		clReleaseKernel(kernel);
 		clReleaseProgram(program);
 
 
 		// Print statistic
-		/*ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
 		executionStatistic.addEntry("kernel", kernelEvent);
 		executionStatistic.addEntry("read", readEvent);
-		executionStatistic.print();*/
+		executionStatistic.print();
 		return dArray;
+	}
+
+	private static void setLocalWorkSize(int n) {
+		int localWorkSize = n;
+		while (localWorkSize > maxWorkItemSizes[0]) {
+			localWorkSize = localWorkSize / 2;
+		}
+		local_work_size[0] = localWorkSize;
 	}
 
 	private static void releasePlatform() {
@@ -305,6 +290,91 @@ public class RadixSort {
 		return device;
 	}
 
+	public static int[] createCompleteScanFromBlocks(int[] scanArray, int[] blocksumArray) {
+		//setLocalWorkSize(blocksumArray.length);
+		long currentWorkSize = local_work_size[0];
+		if(currentWorkSize > blocksumArray.length) {
+			local_work_size[0] = blocksumArray.length;
+		}
+
+		Scanner scanner = new Scanner(blocksumArray).invoke();
+		int[] outputArray = scanner.getOutputArray();
+		int[] blocksumArray2 = scanner.getBlocksumArray();
+
+		if (blocksumArray2.length > 1) {
+			outputArray = createCompleteScanFromBlocks(outputArray, blocksumArray2);
+		}
+
+		local_work_size[0] = currentWorkSize;
+
+		int[] scannedArray = addBlocksum(Arrays.copyOf(scanArray, scanArray.length), outputArray);
+		return scannedArray;
+	}
+
+	public static int[] addBlocksum(int[] scanArray, int[] blocksumArray) {
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/addBlocksum.c");
+		String programSource = "";
+		try {
+			programSource = FileUtils.readFileToString(programSourceFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		int n = scanArray.length;
+		long global_work_size[] = new long[]{n};
+		//setLocalWorkSize(n);
+
+		// Set the work-item dimensions
+		Pointer outputPointer = Pointer.to(scanArray);
+		Pointer blocksumPointer = Pointer.to(blocksumArray);
+
+		// Allocate the memory objects for the input- and output data
+		cl_mem memObjects[] = new cl_mem[2];
+		memObjects[0] = clCreateBuffer(context,
+				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_int * n, outputPointer, null);
+		memObjects[1] = clCreateBuffer(context,
+				CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_int * n, blocksumPointer, null);
+
+		// Create the program from the source code
+		cl_program program = clCreateProgramWithSource(context,
+				1, new String[]{programSource}, null, null);
+
+		// Build the program
+		clBuildProgram(program, 0, null, null, null, null);
+
+		// Create the kernel
+		cl_kernel kernel = clCreateKernel(program, "addBlocksum", null);
+
+		// Set the arguments for the kernel
+		clSetKernelArg(kernel, 0,
+				Sizeof.cl_mem, Pointer.to(memObjects[0]));
+		clSetKernelArg(kernel, 1,
+				Sizeof.cl_mem, Pointer.to(memObjects[1]));
+
+		// Execute the kernel
+		cl_event kernelEvent = new cl_event();
+		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
+				global_work_size, local_work_size, 0, null, kernelEvent);
+
+		// Read the output data
+		cl_event readEvent = new cl_event();
+		clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
+				n * Sizeof.cl_int, outputPointer, 0, null, readEvent);
+		// Release kernel, program, and memory objects
+		clReleaseMemObject(memObjects[0]);
+		clReleaseMemObject(memObjects[1]);
+		clReleaseKernel(kernel);
+		clReleaseProgram(program);
+
+		// Collect statistic
+        ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+        executionStatistic.addEntry("blocksum kernel", kernelEvent);
+        executionStatistic.addEntry("blocksum read", readEvent);
+        executionStatistic.print();
+		return scanArray;
+	}
+
 	/**
 	 * Returns the values of the device info parameter with the given name
 	 *
@@ -333,103 +403,21 @@ public class RadixSort {
 		return values;
 	}
 
-	public static cl_mem createCompleteScanFromBlocks(cl_mem scanBuffer, cl_mem blocksumBuffer, int blocksumSize, int scanSize) {
-//		setLocalWorkSize(blocksumSize);
-		long currentWorkSize = local_work_size[0];
-		if(currentWorkSize > blocksumSize) {
-			local_work_size[0] = blocksumSize;
-		}
-		Scanner scanner = new Scanner(blocksumBuffer, blocksumSize).invoke();
-		cl_mem outputBuffer = scanner.getOutputBuffer();
-		cl_mem blocksumBuffer2 = scanner.getBlocksumBuffer();
-		int outputSize2 = scanner.getOutputSize();
-		int blocksumsize2 = scanner.getBlocksumSize();
-
-		if (blocksumsize2 > 1) {
-			outputBuffer = createCompleteScanFromBlocks(outputBuffer, blocksumBuffer2, blocksumsize2, outputSize2);
-		}
-
-		local_work_size[0] = currentWorkSize;
-
-		cl_mem scannedArray = addBlocksum(scanBuffer, outputBuffer, scanSize);
-		clReleaseMemObject(outputBuffer);
-		clReleaseMemObject(blocksumBuffer2);
-		return scannedArray;
-	}
-	public static cl_mem addBlocksum(cl_mem scanArray, cl_mem blocksumArray, int scanSize) {
-		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/addBlocksum.c");
-		String programSource = "";
-		try {
-			programSource = FileUtils.readFileToString(programSourceFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		int n = scanSize;
-		long global_work_size[] = new long[]{n};
-//		setLocalWorkSize(n);
-
-		// Create the program from the source code
-		cl_program program = clCreateProgramWithSource(context,
-				1, new String[]{programSource}, null, null);
-
-		// Build the program
-		clBuildProgram(program, 0, null, null, null, null);
-
-		// Create the kernel
-		cl_kernel kernel = clCreateKernel(program, "addBlocksum", null);
-
-		// Set the arguments for the kernel
-		clSetKernelArg(kernel, 0,
-				Sizeof.cl_mem, Pointer.to(scanArray));
-		clSetKernelArg(kernel, 1,
-				Sizeof.cl_mem, Pointer.to(blocksumArray));
-//		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int) local_work_size[0] * 2}));
-
-		// Execute the kernel
-		cl_event kernelEvent = new cl_event();
-		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-				global_work_size, local_work_size, 0, null, kernelEvent);
-
-		// Read the output data
-		cl_event readEvent = new cl_event();
-		// Release kernel, program, and memory objects
-		clReleaseKernel(kernel);
-		clReleaseProgram(program);
-
-		// Collect statistic
-//		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum kernel", kernelEvent);
-//		ScanComparer.ExecutionStatisticHelper.addEntry("blocksum read", readEvent);
-
-		return scanArray;
-	}
-
 	private static class Scanner {
-		private cl_mem inputBuffer;
-		private cl_mem outputBuffer;
-		private cl_mem blocksumBuffer;
-		private int n;
-		private int outputSize;
-		private int blocksumSize;
+		private int[] inputArray;
+		private int[] outputArray;
+		private int[] blocksumArray;
 
-		Scanner(cl_mem inputBuffer, int n) {
-			this.inputBuffer = inputBuffer;
-			this.n = n;
+		Scanner(int... inputArray) {
+			this.inputArray = inputArray;
 		}
 
-		cl_mem getOutputBuffer() {
-			return outputBuffer;
+		int[] getOutputArray() {
+			return outputArray;
 		}
 
-		cl_mem getBlocksumBuffer() {
-			return blocksumBuffer;
-		}
-
-		int getOutputSize() {
-			return outputSize;
-		}
-
-		int getBlocksumSize() {
-			return blocksumSize;
+		int[] getBlocksumArray() {
+			return blocksumArray;
 		}
 
 		Scanner invoke() {
@@ -440,33 +428,18 @@ public class RadixSort {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
-//			int n = inputArray.length;
-			int blocksumN = n / ((int) local_work_size[0] * 2);
+			int n = inputArray.length;
+			int blocksumN = (int)Math.ceil((double)n / local_work_size[0]);
 			blocksumN = blocksumN > 0 ? blocksumN : 1;
 			long global_work_size[] = new long[]{n};
-			int[] outputArray = new int[n];
-			int[] blocksumArray = new int[blocksumN];
-//			int tempN = local_work_size[0] < n ? n*(n/((int)local_work_size[0]*2)) : n;
-//			int[] tempArray = new int[tempN];
+			outputArray = new int[n];
+			blocksumArray = new int[blocksumN];
 
 			// Set the work-item dimensions
 
+			Pointer inputPointer = Pointer.to(inputArray);
 			Pointer outputPointer = Pointer.to(outputArray);
 			Pointer blocksumPointer = Pointer.to(blocksumArray);
-//			Pointer tempPointer = Pointer.to(tempArray);
-
-			// Allocate the memory objects for the input- and output data
-//			cl_mem memObjects[] = new cl_mem[1];
-			outputBuffer = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * n, outputPointer, null);
-			blocksumBuffer = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * blocksumN, blocksumPointer, null);
-//			memObjects[0] = clCreateBuffer(context,
-//					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-//					Sizeof.cl_int * tempN, tempPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -475,49 +448,59 @@ public class RadixSort {
 			// Build the program
 			clBuildProgram(program, 0, null, null, null, null);
 
+			// Allocate the memory objects for the input- and output data
+			cl_mem memObjects[] = new cl_mem[3];
+			memObjects[0] = clCreateBuffer(context,
+					CL_MEM_READ_ONLY,
+					Sizeof.cl_int * n, null, null);
+			memObjects[1] = clCreateBuffer(context,
+					CL_MEM_WRITE_ONLY,
+					Sizeof.cl_int * n, null, null);
+			memObjects[2] = clCreateBuffer(context,
+					CL_MEM_READ_WRITE,
+					Sizeof.cl_int * blocksumN, null, null);
+
+			clEnqueueWriteBuffer(commandQueue,
+					memObjects[0],
+					CL_TRUE,
+					0,
+					Sizeof.cl_int * n,
+					inputPointer,
+					0,
+					null,
+					null);
+
 			// Create the kernel
 			cl_kernel kernel = clCreateKernel(program, "scan", null);
 
 			// Set the arguments for the kernel
-			clSetKernelArg(kernel, 0,
-					Sizeof.cl_mem, Pointer.to(inputBuffer));
-			clSetKernelArg(kernel, 1,
-					Sizeof.cl_mem, Pointer.to(outputBuffer));
-			clSetKernelArg(kernel, 2,
-					Sizeof.cl_mem, Pointer.to(blocksumBuffer));
-//			clSetKernelArg(kernel, 3,
-//					Sizeof.cl_mem, Pointer.to(memObjects[0]));
-			clSetKernelArg(kernel, 3, Sizeof.cl_int * local_work_size[0] * 2, null);
-			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
+			int ai = 0;
+			clSetKernelArg(kernel, ai++,
+					Sizeof.cl_mem, Pointer.to(memObjects[0]));
+			clSetKernelArg(kernel, ai++,
+					Sizeof.cl_mem, Pointer.to(memObjects[1]));
+			clSetKernelArg(kernel, ai++,
+					Sizeof.cl_mem, Pointer.to(memObjects[2]));
+			clSetKernelArg(kernel, ai++,
+					Sizeof.cl_int * local_work_size[0] * 2, null);
+			clSetKernelArg(kernel, ai++, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 			// Execute the kernel
-			cl_event kernelEvent = new cl_event();
 			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-					global_work_size, local_work_size, 0, null, kernelEvent);
+					global_work_size, local_work_size, 0, null, null);
 
 			// Read the output data
-			cl_event readEvent1 = new cl_event();
-			clEnqueueReadBuffer(commandQueue, outputBuffer, CL_TRUE, 0,
-					n * Sizeof.cl_int, outputPointer, 0, null, readEvent1);
-			cl_event readEvent2 = new cl_event();
-			clEnqueueReadBuffer(commandQueue, blocksumBuffer, CL_TRUE, 0,
-					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readEvent2);
-			System.out.println("oArray: " + Arrays.toString(outputArray));
-			System.out.println("bArray: " + Arrays.toString(blocksumArray));
-
-			outputSize = outputArray.length;
-			blocksumSize = blocksumArray.length;
+			clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
+					n * Sizeof.cl_int, outputPointer, 0, null, null);
+			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
+					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, null);
 
 			// Release kernel, program, and memory objects
-//			clReleaseMemObject(memObjects[0]);
+			clReleaseMemObject(memObjects[0]);
+			clReleaseMemObject(memObjects[1]);
+			clReleaseMemObject(memObjects[2]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
-
-			// Collect statistic
-//			ScanComparer.ExecutionStatisticHelper.addEntry("scan kernel", kernelEvent);
-//			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent1);
-//			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent2);
-
 			return this;
 		}
 	}

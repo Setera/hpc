@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Random;
 
 import static org.jocl.CL.*;
 
@@ -23,9 +24,6 @@ public class WorkEfficientParallelScan {
 	private static long maxWorkItemSizes[];
 	private static long[] local_work_size = new long[1];
 
-	//TODO: Bank conflicts
-	//TODO: Timing info
-
 	public static void main(String args[]) {
 		ScanComparer.ExecutionStatisticHelper.clear();
 
@@ -33,9 +31,23 @@ public class WorkEfficientParallelScan {
 		//int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1};  // 8
 		//int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 16
 		//int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // 32
-		int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};   // 64
+		//int inputArray[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};   // 64
 
-		performScan(inputArray);
+		int[] inputArray = new int[16777216];
+		Random randomGenerator = new Random();
+		for(int i = 0; i < inputArray.length; ++i){
+			//input[i] = randomGenerator.nextInt(10);
+			inputArray[i] = 1;
+		}
+
+		int[] output = performScan(inputArray);
+
+		for(int i = 1; i < output.length; i++){
+			if (output[i] != (output[i-1]+1)) {
+				System.out.println("Scan was wrong at index: " + i + ". (" + output[i-1] + " vs. " + output[i] + ")");
+				break;
+			}
+		}
 
 		ScanComparer.ExecutionStatisticHelper.print();
 	}
@@ -46,7 +58,8 @@ public class WorkEfficientParallelScan {
 
 		initPlatform();
 
-		setLocalWorkSize(inputArray.length);
+		//setLocalWorkSize(inputArray.length);
+		local_work_size[0] = 256;
 
 		Scanner scanner = new Scanner(inputArray).invoke();
 		int[] outputArray = scanner.getOutputArray();
@@ -139,7 +152,12 @@ public class WorkEfficientParallelScan {
 	}
 
 	public static int[] createCompleteScanFromBlocks(int[] scanArray, int[] blocksumArray) {
-		setLocalWorkSize(blocksumArray.length);
+		//setLocalWorkSize(blocksumArray.length);
+		long currentWorkSize = local_work_size[0];
+		if(currentWorkSize > blocksumArray.length) {
+			local_work_size[0] = blocksumArray.length;
+		}
+
 		Scanner scanner = new Scanner(blocksumArray).invoke();
 		int[] outputArray = scanner.getOutputArray();
 		int[] blocksumArray2 = scanner.getBlocksumArray();
@@ -148,12 +166,14 @@ public class WorkEfficientParallelScan {
 			outputArray = createCompleteScanFromBlocks(outputArray, blocksumArray2);
 		}
 
+		local_work_size[0] = currentWorkSize;
+
 		int[] scannedArray = addBlocksum(Arrays.copyOf(scanArray, scanArray.length), outputArray);
 		return scannedArray;
 	}
 
 	public static int[] addBlocksum(int[] scanArray, int[] blocksumArray) {
-		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource2.c");
+		File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/addBlocksum.c");
 		String programSource = "";
 		try {
 			programSource = FileUtils.readFileToString(programSourceFile);
@@ -162,7 +182,7 @@ public class WorkEfficientParallelScan {
 		}
 		int n = scanArray.length;
 		long global_work_size[] = new long[]{n};
-		setLocalWorkSize(n);
+		//setLocalWorkSize(n);
 
 		// Set the work-item dimensions
 		Pointer outputPointer = Pointer.to(scanArray);
@@ -192,7 +212,6 @@ public class WorkEfficientParallelScan {
 				Sizeof.cl_mem, Pointer.to(memObjects[0]));
 		clSetKernelArg(kernel, 1,
 				Sizeof.cl_mem, Pointer.to(memObjects[1]));
-		clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{(int) local_work_size[0] * 2}));
 
 		// Execute the kernel
 		cl_event kernelEvent = new cl_event();
@@ -262,44 +281,25 @@ public class WorkEfficientParallelScan {
 		}
 
 		Scanner invoke() {
-			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/programSource.c");
+			File programSourceFile = new File("src/main/resources/at/fhtw/hpc/exercise2/scan.c");
 			String programSource = "";
 			try {
 				programSource = FileUtils.readFileToString(programSourceFile);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
 			int n = inputArray.length;
-			int blocksumN = n / ((int) local_work_size[0] * 2);
+			int blocksumN = (int)Math.ceil((double)n / local_work_size[0]);
 			blocksumN = blocksumN > 0 ? blocksumN : 1;
 			long global_work_size[] = new long[]{n};
 			outputArray = new int[n];
 			blocksumArray = new int[blocksumN];
-			int tempN = local_work_size[0] < n ? n*(n/((int)local_work_size[0]*2)) : n;
-			int[] tempArray = new int[tempN];
 
 			// Set the work-item dimensions
 
 			Pointer inputPointer = Pointer.to(inputArray);
 			Pointer outputPointer = Pointer.to(outputArray);
 			Pointer blocksumPointer = Pointer.to(blocksumArray);
-			Pointer tempPointer = Pointer.to(tempArray);
-
-			// Allocate the memory objects for the input- and output data
-			cl_mem memObjects[] = new cl_mem[4];
-			memObjects[0] = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * n, outputPointer, null);
-			memObjects[1] = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * n, inputPointer, null);
-			memObjects[2] = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * blocksumN, blocksumPointer, null);
-			memObjects[3] = clCreateBuffer(context,
-					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-					Sizeof.cl_int * tempN, tempPointer, null);
 
 			// Create the program from the source code
 			cl_program program = clCreateProgramWithSource(context,
@@ -308,33 +308,52 @@ public class WorkEfficientParallelScan {
 			// Build the program
 			clBuildProgram(program, 0, null, null, null, null);
 
+			// Allocate the memory objects for the input- and output data
+			cl_mem memObjects[] = new cl_mem[3];
+			memObjects[0] = clCreateBuffer(context,
+					CL_MEM_READ_ONLY,
+					Sizeof.cl_int * n, null, null);
+			memObjects[1] = clCreateBuffer(context,
+					CL_MEM_WRITE_ONLY,
+					Sizeof.cl_int * n, null, null);
+			memObjects[2] = clCreateBuffer(context,
+					CL_MEM_READ_WRITE,
+					Sizeof.cl_int * blocksumN, null, null);
+
+			clEnqueueWriteBuffer(commandQueue,
+					memObjects[0],
+					CL_TRUE,
+					0,
+					Sizeof.cl_int * n,
+					inputPointer,
+					0,
+					null,
+					null);
+
 			// Create the kernel
 			cl_kernel kernel = clCreateKernel(program, "scan", null);
 
 			// Set the arguments for the kernel
-			clSetKernelArg(kernel, 0,
+			int ai = 0;
+			clSetKernelArg(kernel, ai++,
 					Sizeof.cl_mem, Pointer.to(memObjects[0]));
-			clSetKernelArg(kernel, 1,
+			clSetKernelArg(kernel, ai++,
 					Sizeof.cl_mem, Pointer.to(memObjects[1]));
-			clSetKernelArg(kernel, 2,
-					Sizeof.cl_mem, Pointer.to(memObjects[3]));
-			clSetKernelArg(kernel, 3,
+			clSetKernelArg(kernel, ai++,
 					Sizeof.cl_mem, Pointer.to(memObjects[2]));
-			clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(new int[]{n}));
+			clSetKernelArg(kernel, ai++,
+					Sizeof.cl_int * local_work_size[0] * 2, null);
+			clSetKernelArg(kernel, ai++, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 			// Execute the kernel
-			cl_event kernelEvent = new cl_event();
 			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-					global_work_size, local_work_size, 0, null, kernelEvent);
+					global_work_size, local_work_size, 0, null, null);
 
 			// Read the output data
-			cl_event readEvent1 = new cl_event();
-			clEnqueueReadBuffer(commandQueue, memObjects[0], CL_TRUE, 0,
-					n * Sizeof.cl_int, outputPointer, 0, null, readEvent1);
-			cl_event readEvent2 = new cl_event();
+			clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
+					n * Sizeof.cl_int, outputPointer, 0, null, null);
 			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readEvent2);
-
+					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, null);
 
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
@@ -342,12 +361,6 @@ public class WorkEfficientParallelScan {
 			clReleaseMemObject(memObjects[2]);
 			clReleaseKernel(kernel);
 			clReleaseProgram(program);
-
-			// Collect statistic
-			ScanComparer.ExecutionStatisticHelper.addEntry("scan kernel", kernelEvent);
-			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent1);
-			ScanComparer.ExecutionStatisticHelper.addEntry("scan read", readEvent2);
-
 			return this;
 		}
 	}

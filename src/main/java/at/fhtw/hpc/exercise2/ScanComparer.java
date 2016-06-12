@@ -25,10 +25,10 @@ public class ScanComparer {
 			input[i] = 1;
 		}
 
-		int serialOutput[] = Scan.performScan(input);
+		int serialOutput[] = SeriellScan.performScan(input);
 
 		ScanComparer.ExecutionStatisticHelper.clear();
-		int parallelOutput[] = WorkEfficientParallelScanWithLocal.performScan(input);
+		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
 		ScanComparer.ExecutionStatisticHelper.printSummary();
 
 		// compare results
