@@ -76,6 +76,8 @@ public class RadixSort {
 		}
 		releasePlatform();
 
+        executionStatistic.printSummary();
+
 		for (int i = 1; i < resultArray.length; i++) {
 			if (resultArray[i] < resultArray[i-1]) {
 				System.out.println("Sort was wrong at index: " + i + ". (Curr: " + resultArray[i] + " / Prev:" + resultArray[i-1] + ")");
@@ -371,7 +373,6 @@ public class RadixSort {
 		// Collect statistic
         executionStatistic.addEntry("blocksum kernel", kernelEvent);
         executionStatistic.addEntry("blocksum read", readEvent);
-        executionStatistic.print();
 
 		return scanArray;
 	}

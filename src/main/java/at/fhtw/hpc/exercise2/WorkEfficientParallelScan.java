@@ -339,14 +339,22 @@ public class WorkEfficientParallelScan {
 			clSetKernelArg(kernel, ai++, Sizeof.cl_int, Pointer.to(new int[]{n}));
 
 			// Execute the kernel
+			cl_event executeScanEvent = new cl_event();
 			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
-					global_work_size, local_work_size, 0, null, null);
+					global_work_size, local_work_size, 0, null, executeScanEvent);
 
 			// Read the output data
+			cl_event readOutputEvent = new cl_event();
 			clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
-					n * Sizeof.cl_int, outputPointer, 0, null, null);
+					n * Sizeof.cl_int, outputPointer, 0, null, readOutputEvent);
+			cl_event readBlocksumEvent = new cl_event();
 			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0,
-					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, null);
+					blocksumN * Sizeof.cl_int, blocksumPointer, 0, null, readBlocksumEvent);
+
+			// Collect statistic
+			ScanComparer.executionStatisticHelper.addEntry("scan kernel", executeScanEvent);
+			ScanComparer.executionStatisticHelper.addEntry("scan output read", readOutputEvent);
+			ScanComparer.executionStatisticHelper.addEntry("scan blocksum read", readBlocksumEvent);
 
 			// Release kernel, program, and memory objects
 			clReleaseMemObject(memObjects[0]);
