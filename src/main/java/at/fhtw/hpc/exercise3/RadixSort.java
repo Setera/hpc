@@ -21,6 +21,8 @@ import static org.jocl.CL.*;
  */
 public class RadixSort {
 
+    static ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+
 	private static cl_context context;
 	private static cl_command_queue commandQueue;
 
@@ -82,7 +84,10 @@ public class RadixSort {
 
 		if (resultArray[resultArray.length - 1] == 0) {
 			System.out.println("Sort was wrong (Zero at last index)");
+			return;
 		}
+
+		System.out.println("Sort was successful");
 	}
 
 	private static int[] getE(int[] inputarray, int bit) {
@@ -142,10 +147,8 @@ public class RadixSort {
 		clReleaseProgram(program);
 
 		// Print statistic
-		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
 		executionStatistic.addEntry("kernel", kernelEvent);
 		executionStatistic.addEntry("read", readEvent);
-		executionStatistic.print();
 		return eArray;
 	}
 
@@ -220,10 +223,8 @@ public class RadixSort {
 
 
 		// Print statistic
-		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
 		executionStatistic.addEntry("kernel", kernelEvent);
 		executionStatistic.addEntry("read", readEvent);
-		executionStatistic.print();
 		return dArray;
 	}
 
@@ -367,10 +368,10 @@ public class RadixSort {
 		clReleaseProgram(program);
 
 		// Collect statistic
-		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
-		executionStatistic.addEntry("blocksum kernel", kernelEvent);
-		executionStatistic.addEntry("blocksum read", readEvent);
-		executionStatistic.print();
+        executionStatistic.addEntry("blocksum kernel", kernelEvent);
+        executionStatistic.addEntry("blocksum read", readEvent);
+        executionStatistic.print();
+
 		return scanArray;
 	}
 

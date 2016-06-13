@@ -44,5 +44,6 @@ public class ScanComparer {
 				return;
 			}
 		}
+		System.out.println("Scan was successful!");
 	}
 }
