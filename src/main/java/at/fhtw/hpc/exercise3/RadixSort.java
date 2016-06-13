@@ -32,7 +32,7 @@ public class RadixSort {
 
 	public static void main(String args[]) {
 		Random random = new Random();
-		int size = (int) Math.pow(2, 20);
+		int size = (int) Math.pow(2, 24);
 		System.out.println("Array size: " + size);
 
 		Integer[] inputArray = new Integer[size];
