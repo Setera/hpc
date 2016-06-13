@@ -17,8 +17,7 @@ import java.util.Random;
 import static org.jocl.CL.*;
 
 /**
- * @author Teresa Melchart
- *         2.6.16
+ * Exercise 3
  */
 public class RadixSort {
 
@@ -62,7 +61,7 @@ public class RadixSort {
 			int[] blocksumArray = scanner.getBlocksumArray();
 
 			int[] fArray = outputArray;
-			if(blocksumArray.length > 1) {
+			if (blocksumArray.length > 1) {
 				fArray = createCompleteScanFromBlocks(outputArray, blocksumArray);
 			}
 
@@ -75,13 +74,13 @@ public class RadixSort {
 		releasePlatform();
 
 		for (int i = 1; i < resultArray.length; i++) {
-			if (resultArray[i] < resultArray[i-1]) {
-				System.out.println("Sort was wrong at index: " + i + ". (Curr: " + resultArray[i] + " / Prev:" + resultArray[i-1] + ")");
+			if (resultArray[i] < resultArray[i - 1]) {
+				System.out.println("Sort was wrong at index: " + i + ". (Curr: " + resultArray[i] + " / Prev:" + resultArray[i - 1] + ")");
 				return;
 			}
 		}
 
-		if(resultArray[resultArray.length-1] == 0){
+		if (resultArray[resultArray.length - 1] == 0) {
 			System.out.println("Sort was wrong (Zero at last index)");
 		}
 	}
@@ -133,7 +132,7 @@ public class RadixSort {
 		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null,
 				global_work_size, local_work_size, 0, null, kernelEvent);
 
-        cl_event readEvent = new cl_event();
+		cl_event readEvent = new cl_event();
 		clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
 				n * Sizeof.cl_int, ePointer, 0, null, readEvent);
 
@@ -293,7 +292,7 @@ public class RadixSort {
 	public static int[] createCompleteScanFromBlocks(int[] scanArray, int[] blocksumArray) {
 		//setLocalWorkSize(blocksumArray.length);
 		long currentWorkSize = local_work_size[0];
-		if(currentWorkSize > blocksumArray.length) {
+		if (currentWorkSize > blocksumArray.length) {
 			local_work_size[0] = blocksumArray.length;
 		}
 
@@ -368,10 +367,10 @@ public class RadixSort {
 		clReleaseProgram(program);
 
 		// Collect statistic
-        ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
-        executionStatistic.addEntry("blocksum kernel", kernelEvent);
-        executionStatistic.addEntry("blocksum read", readEvent);
-        executionStatistic.print();
+		ExecutionStatisticHelper executionStatistic = new ExecutionStatisticHelper();
+		executionStatistic.addEntry("blocksum kernel", kernelEvent);
+		executionStatistic.addEntry("blocksum read", readEvent);
+		executionStatistic.print();
 		return scanArray;
 	}
 
@@ -429,7 +428,7 @@ public class RadixSort {
 				e.printStackTrace();
 			}
 			int n = inputArray.length;
-			int blocksumN = (int)Math.ceil((double)n / local_work_size[0]);
+			int blocksumN = (int) Math.ceil((double) n / local_work_size[0]);
 			blocksumN = blocksumN > 0 ? blocksumN : 1;
 			long global_work_size[] = new long[]{n};
 			outputArray = new int[n];

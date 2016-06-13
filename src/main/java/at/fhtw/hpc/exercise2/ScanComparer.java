@@ -1,11 +1,12 @@
 package at.fhtw.hpc.exercise2;
 
 import at.fhtw.hpc.util.ExecutionStatisticHelper;
+import at.fhtw.hpc.util.TimeLogger;
 
 import java.util.Random;
 
 /**
- * Created by JS on 06/06/2016.
+ * Exercise 2
  */
 public class ScanComparer {
 
@@ -30,7 +31,10 @@ public class ScanComparer {
 		int temp[] = WorkEfficientParallelScan.performScan(input);
 
 		ScanComparer.executionStatisticHelper.clear();
+		TimeLogger logger = new TimeLogger();
+		logger.start();
 		int parallelOutput[] = WorkEfficientParallelScan.performScan(input);
+		logger.end("parallel scan");
 		ScanComparer.executionStatisticHelper.printSummary();
 
 		// compare results

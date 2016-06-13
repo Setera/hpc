@@ -14,8 +14,7 @@ import java.util.Random;
 import static org.jocl.CL.*;
 
 /**
- * Work Efficient Parallel Scan
- * 31.5.16
+ * Exercise 2: Work Efficient Parallel Scan
  */
 public class WorkEfficientParallelScan {
 
@@ -53,9 +52,6 @@ public class WorkEfficientParallelScan {
 	}
 
 	public static int[] performScan(int inputArray[]) {
-		TimeLogger logger = new TimeLogger();
-		logger.start();
-
 		initPlatform();
 
 		//setLocalWorkSize(inputArray.length);
@@ -76,8 +72,6 @@ public class WorkEfficientParallelScan {
 		//System.out.println(Arrays.toString(blocksumArray));
 
 		//System.out.println(Arrays.toString(scannedArray));
-
-		logger.end("parallel scan");
 
 		return scannedArray;
 	}

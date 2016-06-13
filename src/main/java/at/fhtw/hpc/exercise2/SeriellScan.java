@@ -3,7 +3,7 @@ package at.fhtw.hpc.exercise2;
 import at.fhtw.hpc.util.TimeLogger;
 
 /**
- * Exercise 2
+ * Exercise 2: Sequantial Scan
  */
 public class SeriellScan {
 
